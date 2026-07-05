@@ -1,11 +1,22 @@
-inicio_amanecer=08:18
-fin_amanecer=10:18
-inicio_atardecer=18:09
-fin_atardecer=20:09
-
+# Setear AUTO_SYNC en ON para cálculo automático de amanecer y atardecer
 AUTO_SYNC=ON
-duracion_amanecer_sync=2
-offset_amanecer_sync=20
-duracion_atardecer_sync=2
-offset_atardecer_sync=20
 
+-------------------------
+
+# Tocar sólo si AUTO_SYNC está en ON
+
+## Offsets en minutos. Negativo para arrancar ventana antes del horario calculado, positivo después
+OFFSET_AMANECER_SYNC=20
+OFFSET_ATARDECER_SYNC=20
+
+## Duración de las ventanas en horas. Acepta decimales
+DURACION_AMANECER_SYNC=2
+DURACION_ATARDECER_SYNC=2
+
+-------------------------
+
+# Tocar sólo si AUTO_SYNC está en OFF. Horarios de inicio y fin de ventanas
+INICIO_AMANECER=08:18
+FIN_AMANECER=10:18
+INICIO_ATARDECER=18:09
+FIN_ATARDECER=20:09
