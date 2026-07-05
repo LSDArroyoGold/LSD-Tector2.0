@@ -6,11 +6,28 @@ import re
 import time
 import threading
 import os
+from pathlib import Path
 
-CONFIG_PATH = '/home/lsd/config_general.txt'
+BASE_PATH = Path(__file__).resolve().parent.parent
+CONFIG_PATH = BASE_PATH / 'config' / 'config_general.txt'
 
 
 # ---------- UTILIDADES ----------
+
+def leer_config(archivo, clave):
+    with open(archivo) as f:
+        for linea in f:
+            linea = linea.strip()
+            if linea.startswith('#') or '=' not in linea:
+                continue
+            k, v = linea.split('=', 1)
+            if k.strip() == clave:
+                return v.strip()
+
+
+HOTSPOT_SSID = leer_config(CONFIG_PATH, 'HOTSPOT_SSID')
+HOTSPOT_PASSWORD = leer_config(CONFIG_PATH, 'HOTSPOT_PASSWORD')
+
 
 def escanear_redes():
     subprocess.run(['sudo', 'nmcli', 'device', 'wifi', 'rescan'],
@@ -76,7 +93,7 @@ def intentar_conexion(ssid, password):
 def reactivar_hotspot():
     subprocess.run(
         ['sudo', 'nmcli', 'device', 'wifi', 'hotspot',
-         'ifname', 'wlan0', 'ssid', 'BirdNET-Setup', 'password', 'birdnet123'],
+         'ifname', 'wlan0', 'ssid', HOTSPOT_SSID, 'password', HOTSPOT_PASSWORD],
         capture_output=True, text=True
     )
 
@@ -94,7 +111,7 @@ def generar_html_redes(redes):
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>BirdNET Setup</title>
+    <title>LSD-Tector Setup</title>
     <style>
         body {{ font-family: Arial, sans-serif; max-width: 400px; margin: 50px auto; padding: 20px; }}
         select, input[type="text"], input[type="password"] {{
@@ -115,7 +132,7 @@ def generar_html_redes(redes):
     </script>
 </head>
 <body>
-    <h1>BirdNET Setup</h1>
+    <h1>LSD-Tector Setup</h1>
     <p>Seleccioná la red WiFi a la que se conectará el dispositivo.</p>
     <form method="POST" action="/configurar">
         <label>Red WiFi disponible:</label>
@@ -134,16 +151,16 @@ def generar_html_redes(redes):
 </html>"""
 
 
-HTML_ESPERA = """<!DOCTYPE html>
+HTML_ESPERA = f"""<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>BirdNET Setup</title>
+    <title>LSD-Tector Setup</title>
     <style>
-        body { font-family: Arial, sans-serif; max-width: 400px; margin: 50px auto; padding: 20px; }
-        h1 { color: #333; }
-        p { font-size: 16px; line-height: 1.6; }
+        body {{ font-family: Arial, sans-serif; max-width: 400px; margin: 50px auto; padding: 20px; }}
+        h1 {{ color: #333; }}
+        p {{ font-size: 16px; line-height: 1.6; }}
     </style>
 </head>
 <body>
@@ -152,7 +169,7 @@ HTML_ESPERA = """<!DOCTYPE html>
     <p>Para verificar el resultado:</p>
     <p>✅ Si la conexión fue <strong>exitosa</strong>: el archivo <strong>log_sistema.txt</strong>
     en Google Drive mostrará una entrada de conexión exitosa y el dispositivo se apagará automáticamente.</p>
-    <p>📶 Si la conexión <strong>falló</strong>: el hotspot <strong>BirdNET-Setup</strong>
+    <p>📶 Si la conexión <strong>falló</strong>: el hotspot <strong>{HOTSPOT_SSID}</strong>
     volverá a aparecer en tu lista de redes WiFi. Volvé a conectarte y reintentá.</p>
 </body>
 </html>"""
