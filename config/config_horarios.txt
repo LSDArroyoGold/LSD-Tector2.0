@@ -1,7 +1,7 @@
 # Setear AUTO_SYNC en ON para cálculo automático de amanecer y atardecer
 AUTO_SYNC=ON
 
--------------------------
+#-------------------------
 
 # Tocar sólo si AUTO_SYNC está en ON
 
@@ -13,7 +13,7 @@ OFFSET_ATARDECER_SYNC=20
 DURACION_AMANECER_SYNC=2
 DURACION_ATARDECER_SYNC=2
 
--------------------------
+#-------------------------
 
 # Tocar sólo si AUTO_SYNC está en OFF. Horarios de inicio y fin de ventanas
 INICIO_AMANECER=08:18
