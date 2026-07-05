@@ -9,9 +9,9 @@ DRIVE_PATH=LSD-Tector
 ## Consumo promedio del sistema en watts
 CONSUMO_W=3.18
 ## Capacidad de la batería en miliamperios-hora
-CAPACIDAD_MAH=10000
+CAPACIDAD_MAH=7000
 ## Voltaje nominal de la batería
-VOLTAJE_BATERIA=3.7
+VOLTAJE_BATERIA=7.4
 ## Margen de seguridad para el umbral de hibernación
 MARGEN_SEGURIDAD=1.5
 
