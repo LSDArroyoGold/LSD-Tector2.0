@@ -1,11 +1,11 @@
 [Unit]
-Description=BirdNET Hotspot Setup
+Description=LSD-Tector Hotspot Setup
 After=network.target
 Before=cron.service
 
 [Service]
 Type=oneshot
-ExecStart=/bin/bash /home/lsd/hotspot.sh
+ExecStart=/bin/bash __BASE_PATH__/scripts/hotspot.sh
 RemainAfterExit=yes
 
 [Install]
