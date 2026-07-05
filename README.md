@@ -1,4 +1,4 @@
-# LSD-Tector 1.0 — Software (ACTUALIZAR README)
+# LSD-Tector 2.0 — Software
 
 Este repositorio contiene todo el software necesario para replicar el sistema de monitoreo autónomo de aves LSD-Tector, desarrollado en el Laboratorio de Sistemas Dinámicos (LSD), Facultad de Ciencias Exactas y Naturales, Universidad de Buenos Aires.
 
@@ -23,8 +23,8 @@ Este software fue desarrollado y probado sobre una **Raspberry Pi 4 Model B (4GB
 
 Instalar **Raspberry Pi OS Full 64-bit (Bookworm)** en la microSD usando [Raspberry Pi Imager](https://www.raspberrypi.com/software/). Durante el proceso de flasheo, en la sección de configuración avanzada del Imager (ícono del engranaje), crear un usuario con nombre y contraseña a elección.
 
-> [!WARNING]
-> Todos los scripts y archivos de configuración de este repositorio tienen la ruta `/home/lsd/` hardcodeada como directorio de trabajo. Esta ruta corresponde al usuario `lsd` utilizado en nuestra instalación de referencia. Si se utiliza un nombre de usuario diferente, será necesario reemplazar manualmente **todas las apariciones** de `/home/lsd/` por la ruta correspondiente al usuario elegido, en cada uno de los scripts `.sh` y `.py` del repositorio antes de utilizarlos. En versiones futuras esta configuración será centralizada y más fácil de personalizar.
+> [!NOTE]
+> Los scripts detectan automáticamente la ubicación del repositorio y el usuario del sistema, por lo que no es necesario usar un nombre de usuario específico ni una ruta fija. El repositorio puede clonarse en cualquier ubicación y con cualquier usuario.
 
 Una vez flasheada la microSD, insertarla en la Raspberry Pi y encenderla.
 
@@ -50,11 +50,8 @@ Una vez instalado, configurar la gestión de disco para evitar que la tarjeta mi
 sudo nano /etc/birdnet/birdnet.conf
 ```
 Buscar los parámetros `FULL_DISK` y `PURGE_THRESHOLD` y establecerlos así:
-
-```
 FULL_DISK=purge
 PURGE_THRESHOLD=75
-```
 Con esta configuración, cuando el disco supere el 75% de ocupación, BirdNET-Pi eliminará automáticamente las grabaciones del día más antiguo para liberar espacio. Guardar con **Ctrl+O** y salir con **Ctrl+X**.
 
 ### 3. Paquetes del sistema
@@ -105,8 +102,8 @@ pip install astral --break-system-packages
 El paquete oficial de PiJuice no está disponible en los repositorios estándar de Raspberry OS. Instalarlo directamente desde GitHub:
 
 ```bash
-git clone https://github.com/PiSupply/PiJuice.git /home/lsd/BirdNET-Pi/PiJuice
-cd /home/lsd/BirdNET-Pi/PiJuice/Software/Source
+git clone https://github.com/PiSupply/PiJuice.git ~/BirdNET-Pi/PiJuice
+cd ~/BirdNET-Pi/PiJuice/Software/Source
 pip install . --break-system-packages
 ```
 
@@ -127,43 +124,16 @@ Si la PiJuice responde sin errores, la instalación fue exitosa.
 
 ### 7. Clonar el repositorio
 
-Clonar este repositorio en la Raspberry Pi:
+Clonar este repositorio en la Raspberry Pi, en la ubicación deseada (por ejemplo, el directorio home del usuario):
 
 ```bash
-cd /home/lsd
-git clone https://github.com/LSDArroyoGold/LSD-Tector-1.0.git
+cd ~
+git clone https://github.com/LSDArroyoGold/LSD-Tector2.0.git
 ```
 
-Copiar los scripts y archivos de configuración a `/home/lsd/`:
+Los scripts se ejecutan directamente desde el repositorio, respetando su estructura de carpetas (`scripts/`, `python/`, `config/`, `systemd/`). No es necesario copiar ni mover archivos.
 
-```bash
-cp /home/lsd/LSD-Tector-1.0/scripts/* /home/lsd/
-cp /home/lsd/LSD-Tector-1.0/python/* /home/lsd/
-cp /home/lsd/LSD-Tector-1.0/config/* /home/lsd/
-chmod +x /home/lsd/*.sh
-```
-
-> **Nota:** el asterisco `*` es un comodín de bash que significa "todos los archivos". Por ejemplo, `scripts/*` copia todos los archivos dentro de la carpeta `scripts/`.
-
-Copiar los archivos de servicio de systemd:
-
-```bash
-sudo cp /home/lsd/LSD-Tector-1.0/systemd/sync-rtc.service /etc/systemd/system/
-sudo cp /home/lsd/LSD-Tector-1.0/systemd/hotspot.service /etc/systemd/system/
-```
-
-Dar permisos correctos a los archivos de servicio:
-
-```bash
-sudo chmod 644 /etc/systemd/system/sync-rtc.service
-sudo chmod 644 /etc/systemd/system/hotspot.service
-```
-
-Recargar la configuración de systemd para que reconozca los nuevos servicios:
-
-```bash
-sudo systemctl daemon-reload
-```
+El instalador `install.sh` se ejecuta más adelante (paso 12), una vez configurados rclone y los archivos de configuración. El instalador se encarga de dar permisos de ejecución a los scripts, instalar y habilitar los servicios de systemd, y configurar el crontab, autodetectando la ubicación del repositorio.
 
 ### 8. rclone
 
@@ -231,89 +201,62 @@ Si el comando devuelve la lista de carpetas existentes en la cuenta de Google, l
 
 ### 9. Archivos de configuración
 
-Los archivos `config_general.txt` y `config_horarios.txt` ya fueron copiados a `/home/lsd/` en el paso 7. Ahora hay que editarlos según las necesidades del dispositivo.
+Los archivos `config_general.txt` y `config_horarios.txt` se encuentran en la carpeta `config/` del repositorio. Editarlos según las necesidades del dispositivo.
 
 **Editar `config_general.txt`:**
 
 ```bash
-nano /home/lsd/config_general.txt
+nano ~/LSD-Tector2.0/config/config_general.txt
 ```
 
 El archivo contiene los siguientes parámetros:
 
-```
-FIRST_START = TRUE
-
-LAT=<latitud_inicial>
-LON=<longitud_inicial>
-
-CONSUMO_W = <potencia_consumida_estimada_en_W>
-CAPACIDAD_MAH = <capacidad_bateria_en_mAh>
-VOLTAJE_BATERIA = <voltaje_nominal_bateria>
-MARGEN_SEGURIDAD = <factor_de_seguridad>
-```
-
-Descripción de cada parámetro y cómo completarlo:
-
 | Parámetro | Descripción |
 |---|---|
-| `FIRST_START` | Mantener en `TRUE` para activar el modo hotspot en el primer arranque. Una vez configurada la red WiFi exitosamente, el sistema lo cambia automáticamente a `FALSE`. |
-| `LAT` y `LON` | Coordenadas geográficas del lugar de instalación. Pueden dejarse con valores aproximados ya que se actualizan automáticamente mediante geolocalización por IP al utilizar el modo hotspot. |
+| `DRIVE_PATH` | Ruta de la carpeta en Google Drive donde se sincronizan datos y configuración. Puede ser una carpeta en la raíz (ej: `LSD-Tector`) o anidada (ej: `Proyectos/LSD/Tector`). |
 | `CONSUMO_W` | Potencia consumida estimada del sistema durante una ventana de grabación, en W. Reemplazar por el valor medido del sistema. |
 | `CAPACIDAD_MAH` | Capacidad nominal de la batería en mAh. Reemplazar por la capacidad de la batería utilizada. |
 | `VOLTAJE_BATERIA` | Voltaje nominal de la batería en V. Para baterías LiPo de celda única, utilizar `3.7`. |
 | `MARGEN_SEGURIDAD` | Factor multiplicador aplicado al umbral de batería para garantizar margen de operación. Valor recomendado: `1.5`. |
-
-> **Importante:** respetar el formato de cada línea. Las variables `LAT` y `LON` no llevan espacios alrededor del signo `=`. El resto de las variables sí llevan espacios.
+| `FIRST_START` | Mantener en `TRUE` para activar el modo hotspot en el primer arranque. Una vez configurada la red WiFi exitosamente, el sistema lo cambia automáticamente a `FALSE`. |
+| `HOTSPOT_SSID` | Nombre de la red WiFi de configuración que emite el dispositivo en el primer arranque. |
+| `HOTSPOT_PASSWORD` | Contraseña de esa red WiFi de configuración. |
+| `LAT` y `LON` | Coordenadas geográficas del lugar de instalación. Pueden dejarse con valores aproximados ya que se actualizan automáticamente mediante geolocalización por IP al utilizar el modo hotspot. |
 
 **Editar `config_horarios.txt`:**
 
 ```bash
-nano /home/lsd/config_horarios.txt
+nano ~/LSD-Tector2.0/config/config_horarios.txt
 ```
 
 El archivo contiene los siguientes parámetros:
 
-```
-inicio_amanecer = 06:00
-fin_amanecer = 08:00
-inicio_atardecer = 17:00
-fin_atardecer = 19:00
-
-AUTO_SYNC=ON
-duracion_amanecer_sync=<duracion_en_horas>
-offset_amanecer_sync=<offset_en_minutos>
-duracion_atardecer_sync=<duracion_en_horas>
-offset_atardecer_sync=<offset_en_minutos>
-```
-
-Descripción de cada parámetro y cómo completarlo:
-
 | Parámetro | Descripción |
 |---|---|
-| `inicio_amanecer`, `fin_amanecer`, `inicio_atardecer`, `fin_atardecer` | Los valores que se muestran son simplemente valores iniciales. Estos horarios se calculan y completan automáticamente con `astral` a partir de las coordenadas geográficas, las duraciones y los offsets configurados. |
 | `AUTO_SYNC` | Mantener en `ON` para que el sistema recalcule automáticamente los horarios al final de cada ventana, usando la librería `astral` y las coordenadas del archivo `config_general.txt`. |
-| `duracion_amanecer_sync` y `duracion_atardecer_sync` | Duración en horas de cada ventana de grabación. Reemplazar por la duración deseada (por ejemplo, `2` para una ventana de 2 horas). |
-| `offset_amanecer_sync` y `offset_atardecer_sync` | Offset en minutos respecto al amanecer y atardecer astronómicos. Valores positivos retrasan el inicio de la ventana, negativos la adelantan. Si no se desea offset, utilizar `0`. |
+| `OFFSET_AMANECER_SYNC` y `OFFSET_ATARDECER_SYNC` | Offset en minutos respecto al amanecer y atardecer astronómicos. Valores positivos retrasan el inicio de la ventana, negativos la adelantan. Si no se desea offset, utilizar `0`. |
+| `DURACION_AMANECER_SYNC` y `DURACION_ATARDECER_SYNC` | Duración en horas de cada ventana de grabación. Reemplazar por la duración deseada (por ejemplo, `2` para una ventana de 2 horas). |
+| `INICIO_AMANECER`, `FIN_AMANECER`, `INICIO_ATARDECER`, `FIN_ATARDECER` | Se usan solo si `AUTO_SYNC` está en `OFF`. Con `AUTO_SYNC=ON`, estos horarios se calculan y completan automáticamente con `astral` a partir de las coordenadas, las duraciones y los offsets. |
 
-> **Importante:** respetar el formato de cada línea. Las primeras cuatro variables (`inicio_amanecer`, `fin_amanecer`, `inicio_atardecer`, `fin_atardecer`) llevan espacios alrededor del signo `=`. Las demás no llevan espacios.
+> **Importante:** en ambos archivos, las variables se escriben sin espacios alrededor del signo `=` (formato `CLAVE=valor`). No modificar los nombres de las variables.
 
 **Verificación**
 
 Una vez editados ambos archivos, verificar que el contenido quedó correcto:
 
 ```bash
-cat /home/lsd/config_general.txt
-cat /home/lsd/config_horarios.txt
+cat ~/LSD-Tector2.0/config/config_general.txt
+cat ~/LSD-Tector2.0/config/config_horarios.txt
 ```
 
-Revisar que todos los valores fueron reemplazados correctamente, que los espacios alrededor del signo `=` respetan el formato indicado, y que no quedaron placeholders del tipo `<...>` sin reemplazar.
+Revisar que todos los valores fueron completados correctamente y que se respeta el formato `CLAVE=valor` sin espacios.
+
 ### 10. Configurar el perfil de batería en la PiJuice
 
 Este paso le indica a la PiJuice las características de la batería conectada para que el fuel gauge y el gestor de carga funcionen correctamente. Ejecutar el script provisto:
 
 ```bash
-python3 /home/lsd/configurar_bateria_pijuice.py
+python3 ~/LSD-Tector2.0/python/configurar_bateria_pijuice.py
 ```
 
 > **Nota:** los parámetros del perfil de batería están definidos dentro del script `configurar_bateria_pijuice.py`. Si se utiliza una batería con características distintas (capacidad, voltaje de regulación, voltaje de corte, etc.), modificar los valores correspondientes en el script antes de ejecutarlo.
@@ -353,111 +296,54 @@ print(pj.config.GetPowerInputsConfig())
 
 La salida debe mostrar `'no_battery_turn_on': True`.
 
+### 12. Ejecutar el instalador
 
-### 12. Habilitar la sincronización del reloj al arranque
+El script `install.sh` configura el sistema de forma automática: da permisos de ejecución a los scripts, instala y habilita los servicios de systemd (`sync-rtc.service` y `hotspot.service`), y configura el crontab con las tareas periódicas. Autodetecta la ubicación del repositorio y el usuario del sistema.
 
-La Raspberry Pi 4 no tiene reloj de tiempo real propio. La PiJuice registra su RTC como `rtc0` en el sistema, y ese RTC es el que conserva la hora cuando el dispositivo está apagado entre ventanas. El servicio `sync-rtc.service` copia la hora del RTC al reloj del sistema en cada arranque, mediante `hwclock --hctosys`.
-
-Esto es imprescindible para la operación en campo: la PiJuice despierta a la Raspberry Pi a la hora programada, y este servicio garantiza que el reloj del sistema tenga la hora real correcta antes de que el crontab evalúe los horarios de las ventanas. Sin esta sincronización, tras un arranque sin conexión a internet el reloj del sistema quedaría con la hora del último apagado y las ventanas no dispararían a la hora correcta.
-
-El archivo del servicio ya fue copiado a `/etc/systemd/system/` en el paso 7. Habilitarlo:
+Ejecutarlo desde la raíz del repositorio, sin `sudo` (el script pide permisos de administrador solo donde los necesita):
 
 ```bash
-sudo systemctl enable sync-rtc.service
-sudo systemctl start sync-rtc.service
+cd ~/LSD-Tector2.0
+./install.sh
 ```
 
-Verificar que está activo:
+El `sync-rtc.service` copia la hora del RTC de la PiJuice al reloj del sistema en cada arranque, imprescindible para que las ventanas disparen a la hora correcta tras un arranque sin conexión. El `hotspot.service` activa el modo hotspot en el primer arranque cuando `FIRST_START=TRUE`. Las cinco tareas del crontab (los cuatro scripts de ventana y la rutina del botón) se ejecutan cada minuto y verifican internamente si corresponde disparar su rutina.
+
+Verificar que la instalación fue exitosa:
 
 ```bash
+sudo systemctl status hotspot.service
 sudo systemctl status sync-rtc.service
-```
-
-La salida debe indicar `active (exited)` o similar, sin errores.
-
-
-### 13. Habilitar el servicio hotspot
-
-El servicio `hotspot.service` ejecuta el script `hotspot.sh` al arrancar el sistema. Este script verifica si `FIRST_START=TRUE` en `config_general.txt` y, en ese caso, activa el modo hotspot para configurar la red WiFi. El archivo del servicio ya fue copiado a `/etc/systemd/system/` en el paso 7. Habilitarlo:
-
-```bash
-sudo systemctl enable hotspot.service
-```
-
-> **Nota:** no es necesario ejecutar `start` sobre este servicio en este momento. Se ejecutará automáticamente en el próximo arranque de la Raspberry Pi.
-
-### 14. Configurar el crontab
-
-El crontab define las tareas periódicas del sistema. Los cuatro scripts principales (`cierre_amanecer.sh`, `cierre_atardecer.sh`, `inicio_amanecer.sh`, `inicio_atardecer.sh`) y la rutina del botón deben ejecutarse cada minuto. Cada uno verifica internamente si la hora actual coincide con su horario configurado y, de ser así, ejecuta su rutina.
-
-Abrir el crontab del usuario `lsd`:
-
-```bash
-crontab -e
-```
-
-> **Importante:** no utilizar `sudo` con este comando. El crontab debe pertenecer al usuario `lsd`, no a root.
-
-La primera vez que se ejecuta, el sistema pregunta qué editor utilizar. Seleccionar `nano` (opción 1).
-
-Al final del archivo, agregar las siguientes líneas:
-
-```
-* * * * * /home/lsd/cierre_amanecer.sh
-* * * * * /home/lsd/cierre_atardecer.sh
-* * * * * /home/lsd/inicio_amanecer.sh
-* * * * * /home/lsd/inicio_atardecer.sh
-* * * * * python3 /home/lsd/check_button.py
-```
-
-Guardar con **Ctrl+O**, Enter, y salir con **Ctrl+X**.
-
-Verificar que las tareas quedaron registradas:
-
-```bash
 crontab -l
 ```
 
-La salida debe mostrar las cinco líneas agregadas.
+Los servicios deben aparecer habilitados y el crontab debe listar las cinco tareas.
 
-Verificar también que el servicio cron está activo en el sistema:
+### 13. Crear carpetas en Google Drive y subir archivos de configuración
 
-```bash
-sudo systemctl status cron
-```
-
-La salida debe mostrar `active (running)`. Si no estuviera activo, iniciarlo y habilitarlo para que arranque automáticamente con el sistema:
+Crear las carpetas que utilizará el sistema en Google Drive, usando la ruta definida en `DRIVE_PATH` (en los ejemplos siguientes se asume `DRIVE_PATH=LSD-Tector`):
 
 ```bash
-sudo systemctl enable cron
-sudo systemctl start cron
-```
-
-### 15. Crear carpetas en Google Drive y subir archivos de configuración
-
-Crear las carpetas que utilizará el sistema en Google Drive:
-
-```bash
-rclone mkdir "gdrive:Laboratorio 6"
-rclone mkdir "gdrive:Laboratorio 6/BirdNET_Detecciones"
+rclone mkdir "gdrive:LSD-Tector"
+rclone mkdir "gdrive:LSD-Tector/BirdNET_Detecciones"
 ```
 
 Subir los archivos de configuración iniciales:
 
 ```bash
-rclone copy /home/lsd/config_horarios.txt "gdrive:Laboratorio 6/"
-rclone copy /home/lsd/config_general.txt "gdrive:Laboratorio 6/"
+rclone copy ~/LSD-Tector2.0/config/config_horarios.txt "gdrive:LSD-Tector/"
+rclone copy ~/LSD-Tector2.0/config/config_general.txt "gdrive:LSD-Tector/"
 ```
 
 Verificar que los archivos fueron subidos correctamente:
 
 ```bash
-rclone ls "gdrive:Laboratorio 6/"
+rclone ls "gdrive:LSD-Tector/"
 ```
 
 La salida debe listar los dos archivos de configuración.
 
-> **Nota:** los nombres de las carpetas en Google Drive (`Laboratorio 6` y `BirdNET_Detecciones`) están definidos por los scripts del sistema. Si se desea utilizar nombres diferentes, modificar las referencias correspondientes en todos los scripts antes de ejecutarlos.
+> **Nota:** la carpeta de Google Drive se define mediante `DRIVE_PATH` en `config_general.txt`. La subcarpeta `BirdNET_Detecciones` es fija.
 
 ---
 
@@ -465,9 +351,9 @@ La salida debe listar los dos archivos de configuración.
 
 Una vez completados todos los pasos de instalación, el dispositivo está listo para ser desplegado en campo. El procedimiento de primer arranque es el siguiente:
 
-1. Verificar que en `/home/lsd/config_general.txt` el parámetro `FIRST_START` está en `TRUE`.
+1. Verificar que en `config_general.txt` el parámetro `FIRST_START` está en `TRUE`.
 2. Encender la Raspberry Pi. Esperar aproximadamente 30 segundos a que el sistema arranque completamente y se active el servicio `hotspot.service`.
-3. Desde un celular o computadora, buscar redes WiFi disponibles. Conectarse a la red **BirdNET-Setup** con la contraseña `birdnet123`.
+3. Desde un celular o computadora, buscar redes WiFi disponibles. Conectarse a la red de configuración (nombre y contraseña definidos en `HOTSPOT_SSID` y `HOTSPOT_PASSWORD` de `config_general.txt`).
 4. Abrir un navegador web y navegar a `http://192.168.4.1:5000`. Se mostrará el portal de configuración.
 5. Seleccionar de la lista la red WiFi a la que se conectará el dispositivo en campo. Ingresar la contraseña correspondiente. Presionar **Conectar**.
 6. El dispositivo se desconecta del modo hotspot e intenta conectarse a la red indicada. Si la conexión es exitosa:
@@ -475,7 +361,7 @@ Una vez completados todos los pasos de instalación, el dispositivo está listo 
    - Los horarios de amanecer y atardecer se calculan y se escriben en `config_horarios.txt`.
    - El parámetro `FIRST_START` se cambia a `FALSE`.
    - El dispositivo programa la alarma para la próxima ventana de grabación y se apaga.
-7. Si la conexión falla, la red `BirdNET-Setup` vuelve a aparecer automáticamente. Reconectarse y reintentar con las credenciales correctas.
+7. Si la conexión falla, la red de configuración vuelve a aparecer automáticamente. Reconectarse y reintentar con las credenciales correctas.
 
 A partir de este momento, el dispositivo opera de forma completamente autónoma siguiendo el ciclo programado de ventanas de grabación.
 
@@ -483,7 +369,6 @@ A partir de este momento, el dispositivo opera de forma completamente autónoma 
 
 ## Control remoto via Google Drive
 
-Una vez el dispositivo está en operación en campo, los archivos `config_horarios.txt` y `config_general.txt` en la carpeta `Laboratorio 6` de Google Drive pueden editarse desde cualquier lugar para modificar la configuración del dispositivo. Los cambios se aplican en el siguiente ciclo, cuando el dispositivo descarga la versión actualizada de Drive al final de la ventana de grabación.
+Una vez el dispositivo está en operación en campo, los archivos `config_horarios.txt` y `config_general.txt` en la carpeta de Google Drive definida por `DRIVE_PATH` pueden editarse desde cualquier lugar para modificar la configuración del dispositivo. Los cambios se aplican en el siguiente ciclo, cuando el dispositivo descarga la versión actualizada de Drive al final de la ventana de grabación.
 
 El archivo `log_sistema.txt` se sube a Drive al final de cada ventana y permite monitorear el estado del dispositivo de forma remota: nivel de batería, cantidad de detecciones registradas, y eventuales cancelaciones por nivel de batería insuficiente.
-
