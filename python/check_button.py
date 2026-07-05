@@ -1,11 +1,14 @@
 import RPi.GPIO as GPIO
 import subprocess
 import os
+from pathlib import Path
+
+BASE_PATH = Path(__file__).resolve().parent.parent
+CONFIG_GENERAL = BASE_PATH / 'config' / 'config_general.txt'
 
 GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
 GPIO.setup(24, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-
 if GPIO.input(24) == 1:
     # Resetear latch
     GPIO.setup(25, GPIO.OUT)
@@ -15,8 +18,8 @@ if GPIO.input(24) == 1:
     GPIO.cleanup()
     
     # Marcar FIRST_START y reiniciar
-    subprocess.run(['sed', '-i', 's/FIRST_START = .*/FIRST_START = TRUE/', 
-                   '/home/lsd/config_general.txt'])
+    subprocess.run(['sed', '-i', 's/FIRST_START=.*/FIRST_START=TRUE/', 
+                   str(CONFIG_GENERAL)])
     subprocess.run(['sudo', 'reboot'])
 else:
     GPIO.cleanup()
