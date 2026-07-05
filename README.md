@@ -1,4 +1,4 @@
-# LSD-Tector 1.0 — Software
+# LSD-Tector 1.0 — Software (ACTUALIZAR README)
 
 Este repositorio contiene todo el software necesario para replicar el sistema de monitoreo autónomo de aves LSD-Tector, desarrollado en el Laboratorio de Sistemas Dinámicos (LSD), Facultad de Ciencias Exactas y Naturales, Universidad de Buenos Aires.
 
