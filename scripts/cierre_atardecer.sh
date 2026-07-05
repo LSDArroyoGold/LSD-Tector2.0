@@ -28,6 +28,7 @@ if [ "$HORA_ACTUAL" = "$HORARIO" ]; then
         bash "$BASE_PATH/scripts/auto_sync_horarios.sh"
         HORA_WAKE=$(awk -F'=' '/INICIO_AMANECER/{print $2}' "$CONFIG_HORARIOS" | tr -d '\r')
         python3 "$BASE_PATH/python/set_wake_pijuice.py" $HORA_WAKE
+        sudo chown "$REAL_USER:$REAL_USER" "$USER_HOME/.config/rclone/rclone.conf"
         python3 -c "
 import sys
 sys.path.append('/home/lsd/BirdNET-Pi/PiJuice/Software/Source')
