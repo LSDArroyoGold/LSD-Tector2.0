@@ -64,7 +64,6 @@ pj.power.SetPowerOff(30)
 	DETECCIONES=$(find "$USER_HOME/BirdSongs/Extracted/By_Date/$(date +%Y-%m-%d)/" -name "*.mp3" 2>/dev/null | grep -oP "birdnet-\K[0-9]{2}:[0-9]{2}" | awk -F: -v ini="$HORA_INICIO" -v fin="$HORA_FIN" '{t=$1*100+$2; if(t>=ini && t<=fin) print}' | wc -l)
 
 	python3 "$BASE_PATH/python/log_sistema.py" FIN amanecer $DETECCIONES
-	echo "DEBUG: llegue al log FIN, detecciones=$DETECCIONES"
 
 	bash "$BASE_PATH/scripts/auto_sync_horarios.sh"
 
