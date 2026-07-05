@@ -1,7 +1,13 @@
 from astral import LocationInfo
 from astral.sun import sun
 from datetime import date, timedelta
+from pathlib import Path
 import subprocess
+
+# Autodeteccion de rutas: el script vive en <repo>/python/, el config en <repo>/config/
+BASE_PATH = Path(__file__).resolve().parent.parent
+CONFIG_GENERAL = BASE_PATH / 'config' / 'config_general.txt'
+CONFIG_HORARIOS = BASE_PATH / 'config' / 'config_horarios.txt'
 
 # Leer coordenadas desde config_general.txt
 def leer_config(archivo, clave):
@@ -10,14 +16,16 @@ def leer_config(archivo, clave):
             if clave + '=' in linea:
                 return linea.split('=',1)[1].strip()
 
-LAT = float(leer_config('/home/lsd/config_general.txt', 'LAT'))
-LON = float(leer_config('/home/lsd/config_general.txt', 'LON'))
+LAT = float(leer_config(CONFIG_GENERAL, 'LAT'))
+LON = float(leer_config(CONFIG_GENERAL, 'LON'))
 
-DURACION_AMANECER = float(leer_config('/home/lsd/config_horarios.txt', 'duracion_amanecer_sync'))
-DURACION_ATARDECER = float(leer_config('/home/lsd/config_horarios.txt', 'duracion_atardecer_sync'))
+DURACION_AMANECER = float(leer_config(CONFIG_HORARIOS, 'DURACION_AMANECER_SYNC'))
+DURACION_ATARDECER = float(leer_config(CONFIG_HORARIOS, 'DURACION_ATARDECER_SYNC'))
 
-OFFSET_AMANECER = float(leer_config('/home/lsd/config_horarios.txt', 'offset_amanecer_sync'))
-OFFSET_ATARDECER = float(leer_config('/home/lsd/config_horarios.txt', 'offset_atardecer_sync'))
+OFFSET_AMANECER = float(leer_config(CONFIG_HORARIOS, 'OFFSET_AMANECER_SYNC'))
+OFFSET_ATARDECER = float(leer_config(CONFIG_HORARIOS, 'OFFSET_ATARDECER_SYNC'))
+
+DRIVE_PATH = leer_config(CONFIG_GENERAL, 'DRIVE_PATH')
 
 # Calcular horarios de hoy y mañana
 ubicacion = LocationInfo(latitude=LAT, longitude=LON)
@@ -38,18 +46,18 @@ print(f"fin_amanecer = {fin_amanecer}")
 
 import re
 
-with open('/home/lsd/config_horarios.txt','r') as f:
+with open(CONFIG_HORARIOS,'r') as f:
 	contenido = f.read()
 
-contenido = re.sub(r'inicio_amanecer = .*', f'inicio_amanecer = {inicio_amanecer}', contenido)
-contenido = re.sub(r'fin_amanecer = .*', f'fin_amanecer = {fin_amanecer}', contenido)
-contenido = re.sub(r'inicio_atardecer = .*', f'inicio_atardecer = {inicio_atardecer}', contenido)
-contenido = re.sub(r'fin_atardecer = .*', f'fin_atardecer = {fin_atardecer}', contenido)
+contenido = re.sub(r'INICIO_AMANECER=.*', f'INICIO_AMANECER={inicio_amanecer}', contenido)
+contenido = re.sub(r'FIN_AMANECER=.*', f'FIN_AMANECER={fin_amanecer}', contenido)
+contenido = re.sub(r'INICIO_ATARDECER=.*', f'INICIO_ATARDECER={inicio_atardecer}', contenido)
+contenido = re.sub(r'FIN_ATARDECER=.*', f'FIN_ATARDECER={fin_atardecer}', contenido)
 
-with open('/home/lsd/config_horarios.txt','w') as f:
+with open(CONFIG_HORARIOS,'w') as f:
 	f.write(contenido)
 
 import subprocess
-subprocess.run(['rclone', 'copy', '/home/lsd/config_horarios.txt', 'gdrive:Laboratorio 6/'])
+subprocess.run(['rclone', 'copy', str(CONFIG_HORARIOS), f'gdrive:{DRIVE_PATH}/'])
 
 print("config_horarios.txt actualizado y subido a Drive")
