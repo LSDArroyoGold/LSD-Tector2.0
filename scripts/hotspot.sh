@@ -1,18 +1,30 @@
 #!/bin/bash
 
-export RCLONE_CONFIG=/home/lsd/.config/rclone/rclone.conf
-export HOME=/home/lsd
+# Autodeteccion de rutas del proyecto
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
+BASE_PATH="$(dirname "$SCRIPT_DIR")"
 
-LOG_PATH="/home/lsd/log_sistema.txt"
-CONFIG_PATH="/home/lsd/config_general.txt"
-CONFIG_HORARIOS="/home/lsd/config_horarios.txt"
+# Deteccion robusta del usuario real y su home (incluso si el script corre con sudo)
+REAL_USER="${SUDO_USER:-$(whoami)}"
+USER_HOME="$(getent passwd "$REAL_USER" | cut -d: -f6)"
+
+export RCLONE_CONFIG="$USER_HOME/.config/rclone/rclone.conf"
+export HOME="$USER_HOME"
+
+LOG_PATH="$BASE_PATH/log_sistema.txt"
+CONFIG_PATH="$BASE_PATH/config/config_general.txt"
+CONFIG_HORARIOS="$BASE_PATH/config/config_horarios.txt"
+
+DRIVE_PATH=$(awk -F'=' '/^DRIVE_PATH=/{print $2}' "$CONFIG_PATH" | tr -d '\r')
+HOTSPOT_SSID=$(awk -F'=' '/^HOTSPOT_SSID=/{print $2}' "$CONFIG_PATH" | tr -d '\r')
+HOTSPOT_PASSWORD=$(awk -F'=' '/^HOTSPOT_PASSWORD=/{print $2}' "$CONFIG_PATH" | tr -d '\r')
 
 log() {
     TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
     echo "[$TIMESTAMP] $1" | tee -a "$LOG_PATH"
 }
 
-FIRST_START=$(awk -F' = ' '/FIRST_START/{print $2}' "$CONFIG_PATH" | tr -d '\r')
+FIRST_START=$(awk -F'=' '/FIRST_START/{print $2}' "$CONFIG_PATH" | tr -d '\r')
 
 sleep 15
 
@@ -42,7 +54,7 @@ import time; time.sleep(0.1)
 GPIO.output(25, GPIO.HIGH)
 GPIO.cleanup()
 "
-    sed -i 's/FIRST_START = .*/FIRST_START = TRUE/' "$CONFIG_PATH"
+    sed -i 's/FIRST_START=.*/FIRST_START=TRUE/' "$CONFIG_PATH"
     FIRST_START="TRUE"
 fi
 
@@ -62,7 +74,7 @@ levantar_hotspot() {
     sleep 1
     sudo pkill dnsmasq 2>/dev/null
     sleep 2
-    sudo nmcli device wifi hotspot ifname wlan0 ssid BirdNET-Setup password birdnet123 con-name Hotspot
+    sudo nmcli device wifi hotspot ifname wlan0 ssid "$HOTSPOT_SSID" password "$HOTSPOT_PASSWORD" con-name Hotspot
     sleep 3
     sudo nmcli connection modify Hotspot ipv4.addresses 192.168.4.1/24 ipv4.method shared
     sudo nmcli connection up Hotspot
@@ -86,7 +98,7 @@ IP_HOTSPOT=$(ip addr show wlan0 | grep -oP 'inet \K[\d.]+')
 log "Hotspot activo en IP: $IP_HOTSPOT"
 
 # Lanzar portal y capturar exit code
-sudo python3 /home/lsd/portal_configuracion.py
+sudo python3 "$BASE_PATH/python/portal_configuracion.py"
 EXIT_CODE=$?
 
 if [ $EXIT_CODE -ne 0 ]; then
@@ -99,7 +111,7 @@ fi
 # Sincronizar hora
 sudo systemctl restart systemd-timesyncd
 sleep 5
-python3 /home/lsd/sync_pijuice_rtc.py
+python3 "$BASE_PATH/python/sync_pijuice_rtc.py"
 log "RTC sincronizado."
 
 log "Conexión WiFi exitosa."
@@ -107,44 +119,44 @@ log "Conexión WiFi exitosa."
 UBICACION=$(curl -s ipinfo.io/json)
 LAT=$(echo $UBICACION | python3 -c "import sys,json; coords=json.load(sys.stdin)['loc'].split(','); print(coords[0])")
 LON=$(echo $UBICACION | python3 -c "import sys,json; coords=json.load(sys.stdin)['loc'].split(','); print(coords[1])")
-sed -i "s/LAT=.*/LAT=$LAT/" /home/lsd/config_general.txt
-sed -i "s/LON=.*/LON=$LON/" /home/lsd/config_general.txt
+sed -i "s/LAT=.*/LAT=$LAT/" "$CONFIG_PATH"
+sed -i "s/LON=.*/LON=$LON/" "$CONFIG_PATH"
 log "Ubicación detectada: $LAT, $LON"
 
 # Marcar FIRST_START = FALSE
-sed -i 's/FIRST_START = TRUE/FIRST_START = FALSE/' "$CONFIG_PATH"
+sed -i 's/FIRST_START=TRUE/FIRST_START=FALSE/' "$CONFIG_PATH"
 
-bash /home/lsd/auto_sync_horarios.sh
-rclone copy /home/lsd/config_horarios.txt gdrive:Laboratorio\ 6/
+bash "$BASE_PATH/scripts/auto_sync_horarios.sh"
+rclone copy "$CONFIG_HORARIOS" "gdrive:$DRIVE_PATH/"
 
 # Calcular próxima ventana (la más cercana a futuro)
 HORA_ACTUAL_MIN=$(date +%H%M | sed 's/^0*//')
-INICIO_AMANECER=$(awk -F'=' '/inicio_amanecer/{print $2}' "$CONFIG_HORARIOS" | tr -d ' \r:')
-INICIO_ATARDECER=$(awk -F'=' '/inicio_atardecer/{print $2}' "$CONFIG_HORARIOS" | tr -d ' \r:')
+INICIO_AMANECER=$(awk -F'=' '/INICIO_AMANECER/{print $2}' "$CONFIG_HORARIOS" | tr -d ' \r:')
+INICIO_ATARDECER=$(awk -F'=' '/INICIO_ATARDECER/{print $2}' "$CONFIG_HORARIOS" | tr -d ' \r:')
 
 INICIO_AMANECER_MIN=$(echo "$INICIO_AMANECER" | sed 's/^0*//')
 INICIO_ATARDECER_MIN=$(echo "$INICIO_ATARDECER" | sed 's/^0*//')
 
 if [ "$INICIO_AMANECER_MIN" -gt "$HORA_ACTUAL_MIN" ]; then
-    HORA_WAKE=$(awk -F'=' '/inicio_amanecer/{print $2}' "$CONFIG_HORARIOS" | tr -d ' \r')
+    HORA_WAKE=$(awk -F'=' '/INICIO_AMANECER/{print $2}' "$CONFIG_HORARIOS" | tr -d ' \r')
     log "Próxima ventana: amanecer a las $HORA_WAKE"
 elif [ "$INICIO_ATARDECER_MIN" -gt "$HORA_ACTUAL_MIN" ]; then
-    HORA_WAKE=$(awk -F'=' '/inicio_atardecer/{print $2}' "$CONFIG_HORARIOS" | tr -d ' \r')
+    HORA_WAKE=$(awk -F'=' '/INICIO_ATARDECER/{print $2}' "$CONFIG_HORARIOS" | tr -d ' \r')
     log "Próxima ventana: atardecer a las $HORA_WAKE"
 else
-    HORA_WAKE=$(awk -F'=' '/inicio_amanecer/{print $2}' "$CONFIG_HORARIOS" | tr -d ' \r')
+    HORA_WAKE=$(awk -F'=' '/INICIO_AMANECER/{print $2}' "$CONFIG_HORARIOS" | tr -d ' \r')
     log "Ambas ventanas pasaron hoy. Próxima ventana: amanecer mañana a las $HORA_WAKE"
 fi
 
 # Programar alarma y apagar
-python3 /home/lsd/set_wake_pijuice.py $HORA_WAKE
+python3 "$BASE_PATH/python/set_wake_pijuice.py" $HORA_WAKE
 log "Alarma programada para $HORA_WAKE. Apagando."
 
 # Subir log a Drive
-rclone copy "$LOG_PATH" gdrive:Laboratorio\ 6/
+rclone copy "$LOG_PATH" "gdrive:$DRIVE_PATH/"
 sudo nmcli radio wifi off
 
-sudo chown lsd:lsd /home/lsd/.config/rclone/rclone.conf
+sudo chown "$REAL_USER:$REAL_USER" "$USER_HOME/.config/rclone/rclone.conf"
 
 python3 -c "
 import sys
