@@ -1,7 +1,7 @@
-inicio_amanecer = 08:18
-fin_amanecer = 10:18
-inicio_atardecer = 18:09
-fin_atardecer = 20:09
+inicio_amanecer=08:18
+fin_amanecer=10:18
+inicio_atardecer=18:09
+fin_atardecer=20:09
 
 AUTO_SYNC=ON
 duracion_amanecer_sync=2
