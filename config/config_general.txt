@@ -1,9 +1,36 @@
+# Ruta de la carpeta en Google Drive donde se sincronizan datos y configuración
+# Puede ser una carpeta en la raíz (ej: LSD-Tector) o anidada (ej: Proyectos/LSD/Tector)
+DRIVE_PATH=LSD-Tector
+
+# -------------------------
+
+# Parámetros energéticos para el sistema de supervivencia
+
+## Consumo promedio del sistema en watts
+CONSUMO_W=3.18
+## Capacidad de la batería en miliamperios-hora
+CAPACIDAD_MAH=10000
+## Voltaje nominal de la batería
+VOLTAJE_BATERIA=3.7
+## Margen de seguridad para el umbral de hibernación
+MARGEN_SEGURIDAD=1.5
+
+# -------------------------
+
+# Estado de primer arranque. TRUE activa el hotspot de configuración inicial
 FIRST_START=TRUE
 
-LAT=-34.6131
-LON=-58.3772
+# -------------------------
 
-CONSUMO_W=3.18
-CAPACIDAD_MAH=10000
-VOLTAJE_BATERIA=3.7
-MARGEN_SEGURIDAD=1.5
+# Nombre y contraseña de la red WiFi de configuración
+HOTSPOT_SSID=Tector-Setup
+HOTSPOT_PASSWORD=lsdtector123
+
+# -------------------------
+
+# Ubicación geográfica de la estación. Coordenadas decimales
+
+## Latitud. Negativo para hemisferio sur
+LAT=-34.6131
+## Longitud. Negativo para oeste
+LON=-58.3772
