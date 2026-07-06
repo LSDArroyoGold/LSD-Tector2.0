@@ -4,7 +4,7 @@ Este repositorio contiene todo el software necesario para replicar el sistema de
 
 El sistema gestiona automáticamente ventanas de grabación en horarios de amanecer y atardecer, identifica especies mediante BirdNET-Pi, envía detecciones a Google Drive, y administra el ciclo de encendido y apagado de la Raspberry Pi mediante el RTC de la PiJuice HAT. Para una descripción completa del hardware y el diseño físico del dispositivo, referirse al artículo asociado.
 
-Este software fue desarrollado y probado sobre una **Raspberry Pi 4 Model B (4GB RAM)** con una **PiJuice HAT** como módulo de gestión de energía. No se garantiza compatibilidad con otros modelos o configuraciones de hardware.
+Este software fue desarrollado y probado sobre una **Raspberry Pi 4 Model B (2GB RAM)** con una **PiJuice HAT** como módulo de gestión de energía. No se garantiza compatibilidad con otros modelos o configuraciones de hardware.
 
 ---
 
