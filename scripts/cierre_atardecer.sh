@@ -41,26 +41,19 @@ if [ "$HORA_ACTUAL" = "$HORARIO" ]; then
         bash "$BASE_PATH/scripts/auto_sync_horarios.sh"
 
         HORA_WAKE=$(awk -F'=' '/INICIO_AMANECER/{print $2}' "$CONFIG_HORARIOS" | tr -d '\r')
-        python3 "$BASE_PATH/python/set_wake_pijuice.py" $HORA_WAKE
+        python3 "$BASE_PATH/python/set_wake_rtc.py" $HORA_WAKE
         python3 "$BASE_PATH/python/log_sistema.py" MSG "Próxima ventana: amanecer a las $HORA_WAKE"
-        python3 "$BASE_PATH/python/log_sistema.py" MSG "Alarma programada para $HORA_WAKE. Apagando."
 
         sudo chown "$REAL_USER:$REAL_USER" "$USER_HOME/.config/rclone/rclone.conf"
 
-        python3 -c "
-import sys
-sys.path.append('/home/lsd/BirdNET-Pi/PiJuice/Software/Source')
-from pijuice import PiJuice
-pj = PiJuice(1, 0x14)
-pj.power.SetPowerOff(30)
-"
-		sudo poweroff
+		# PENDIENTE: ver nota de cierre_amanecer.sh sobre el apagado
+		# (SetPowerOff + poweroff de la v1.1) -- sigue sin circuito de corte.
 	fi
 
 	sudo systemctl restart systemd-timesyncd
 	sleep 5
 
-	python3 "$BASE_PATH/python/sync_pijuice_rtc.py"
+	python3 "$BASE_PATH/python/sync_rtc.py"
 
 	find "$USER_HOME/BirdSongs/Extracted/By_Date/" -name "*.png" -delete
 	rm -rf "$USER_HOME/BirdSongs/Extracted/Charts/"*
@@ -82,18 +75,11 @@ pj.power.SetPowerOff(30)
 
 	HORA_WAKE=$(awk -F'=' '/INICIO_AMANECER/{print $2}' "$CONFIG_HORARIOS" | tr -d '\r')
 
-	python3 "$BASE_PATH/python/set_wake_pijuice.py" $HORA_WAKE
+	python3 "$BASE_PATH/python/set_wake_rtc.py" $HORA_WAKE
 	python3 "$BASE_PATH/python/log_sistema.py" MSG "Próxima ventana: amanecer a las $HORA_WAKE"
-	python3 "$BASE_PATH/python/log_sistema.py" MSG "Alarma programada para $HORA_WAKE. Apagando."
 
-	python3 -c "
-import sys
-sys.path.append('/home/lsd/BirdNET-Pi/PiJuice/Software/Source')
-from pijuice import PiJuice
-pj = PiJuice(1, 0x14)
-pj.power.SetPowerOff(30)
-"
-	sudo poweroff
+	# PENDIENTE: ver nota de cierre_amanecer.sh sobre el apagado (SetPowerOff
+	# + poweroff de la v1.1) -- sigue sin circuito de corte.
 
 	echo "Cierre atardecer completado a las $HORA_ACTUAL"
 fi

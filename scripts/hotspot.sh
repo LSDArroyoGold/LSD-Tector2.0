@@ -110,7 +110,7 @@ fi
 # Sincronizar hora
 sudo systemctl restart systemd-timesyncd
 sleep 5
-python3 "$BASE_PATH/python/sync_pijuice_rtc.py"
+python3 "$BASE_PATH/python/sync_rtc.py"
 log "RTC sincronizado."
 
 log "Conexión WiFi exitosa."
@@ -147,9 +147,9 @@ else
     log "Ambas ventanas pasaron hoy. Próxima ventana: amanecer mañana a las $HORA_WAKE"
 fi
 
-# Programar alarma y apagar
-python3 "$BASE_PATH/python/set_wake_pijuice.py" $HORA_WAKE
-log "Alarma programada para $HORA_WAKE. Apagando."
+# Programar alarma (por ahora sin efecto -- ver PENDIENTE en set_wake_rtc.py)
+python3 "$BASE_PATH/python/set_wake_rtc.py" $HORA_WAKE
+log "Próxima ventana calculada para $HORA_WAKE."
 
 # Subir log a Drive
 rclone copy "$LOG_PATH" "gdrive:$DRIVE_PATH/"
@@ -157,11 +157,7 @@ sudo nmcli radio wifi off
 
 sudo chown "$REAL_USER:$REAL_USER" "$USER_HOME/.config/rclone/rclone.conf"
 
-python3 -c "
-import sys
-sys.path.append('/home/lsd/BirdNET-Pi/PiJuice/Software/Source')
-from pijuice import PiJuice
-pj = PiJuice(1, 0x14)
-pj.power.SetPowerOff(30)
-"
-sudo poweroff
+# PENDIENTE: acá la v1.1 apagaba la Raspberry (SetPowerOff + poweroff) tras
+# la configuración exitosa. Sin circuito de corte de energía todavía (ver
+# set_wake_rtc.py y el README), la Pi queda encendida y en operación normal
+# en vez de apagarse.

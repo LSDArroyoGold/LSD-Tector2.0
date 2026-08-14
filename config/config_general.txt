@@ -4,16 +4,29 @@ DRIVE_PATH=LSD-Tector
 
 # -------------------------
 
-# Parámetros energéticos para el sistema de supervivencia
-
-## Consumo promedio del sistema en watts
-CONSUMO_W=3.18
-## Capacidad de la batería en miliamperios-hora
-CAPACIDAD_MAH=7000
-## Voltaje nominal de la batería
-VOLTAJE_BATERIA=7.4
-## Margen de seguridad para el umbral de hibernación
-MARGEN_SEGURIDAD=1.5
+# PENDIENTE — monitoreo de batería por INA219 (voltaje/corriente vía I2C).
+# Hardware nuevo: sin PiJuice, sin fuel gauge propio. Hasta que el battery
+# pack con el INA219 esté armado, el sistema NO tiene watchdog de batería
+# ni corte por nivel bajo: las ventanas corren siempre completas.
+#
+# Umbral ya definido (pack 2S2P, celdas Samsung INR18650-35E, BMS 2S 8A
+# genérico con corte por sobredescarga en 2.5-3.0V±0.05V/celda):
+#
+#   UMBRAL_BATERIA_V=6.9   # ~3.45V/celda, ~15% de capacidad restante
+#
+# Motivo: deja ~0.4V/celda de margen sobre el peor caso posible de disparo
+# del BMS (3.05V/celda), cubre la caída IR del propio BMS (<300mOhm) más
+# el intervalo de 5 min entre chequeos del watchdog, y evita ciclar las
+# celdas cerca de su corte de fábrica (2.65V/celda). Contrastado contra la
+# curva de descarga real del fabricante a la corriente típica de este
+# sistema (~0.2A/celda). Detalle completo: cuaderno de laboratorio, 14/8.
+#
+# Cuando el INA219 esté instalado, activar algo del estilo (a definir
+# junto con la lógica del watchdog en chequeo_bateria.sh):
+#
+# UMBRAL_BATERIA_V=6.9
+# VENTANA_ACTIVA=NONE
+# CIERRE_FORZADO=FALSE
 
 # -------------------------
 

@@ -41,26 +41,21 @@ if [ "$HORA_ACTUAL" = "$HORARIO" ]; then
         bash "$BASE_PATH/scripts/auto_sync_horarios.sh"
 
         HORA_WAKE=$(awk -F'=' '/INICIO_ATARDECER/{print $2}' "$CONFIG_HORARIOS" | tr -d '\r')
-        python3 "$BASE_PATH/python/set_wake_pijuice.py" $HORA_WAKE
+        python3 "$BASE_PATH/python/set_wake_rtc.py" $HORA_WAKE
         python3 "$BASE_PATH/python/log_sistema.py" MSG "Próxima ventana: atardecer a las $HORA_WAKE"
-        python3 "$BASE_PATH/python/log_sistema.py" MSG "Alarma programada para $HORA_WAKE. Apagando."
 
         sudo chown "$REAL_USER:$REAL_USER" "$USER_HOME/.config/rclone/rclone.conf"
 
-        python3 -c "
-import sys
-sys.path.append('/home/lsd/BirdNET-Pi/PiJuice/Software/Source')
-from pijuice import PiJuice
-pj = PiJuice(1, 0x14)
-pj.power.SetPowerOff(30)
-"
-		sudo poweroff
+		# PENDIENTE: acá la v1.1 apagaba la Raspberry (SetPowerOff + poweroff)
+		# después de programar la alarma. Sin circuito de corte de energía
+		# todavía (ver notas de set_wake_rtc.py y el README), la Pi sigue
+		# encendida -- no hay poweroff que hacer.
 	fi
 
 	sudo systemctl restart systemd-timesyncd
 	sleep 5
 
-	python3 "$BASE_PATH/python/sync_pijuice_rtc.py"
+	python3 "$BASE_PATH/python/sync_rtc.py"
 
 	find "$USER_HOME/BirdSongs/Extracted/By_Date/" -name "*.png" -delete
 	rm -rf "$USER_HOME/BirdSongs/Extracted/Charts/"*
@@ -81,24 +76,14 @@ pj.power.SetPowerOff(30)
 	sudo nmcli radio wifi off
 
 	HORA_WAKE=$(awk -F'=' '/INICIO_ATARDECER/{print $2}' "$CONFIG_HORARIOS" | tr -d '\r')
-	#sudo sh -c 'echo 0 > /sys/class/rtc/rtc0/wakealarm'
-	#sudo sh -c "echo $(date -u  +%s -d "today $HORA_WAKE") > /sys/class/rtc/rtc0/wakealarm"
-	#sudo halt
 
 	sudo chown "$REAL_USER:$REAL_USER" "$USER_HOME/.config/rclone/rclone.conf"
 
-	python3 "$BASE_PATH/python/set_wake_pijuice.py" $HORA_WAKE
+	python3 "$BASE_PATH/python/set_wake_rtc.py" $HORA_WAKE
 	python3 "$BASE_PATH/python/log_sistema.py" MSG "Próxima ventana: atardecer a las $HORA_WAKE"
-	python3 "$BASE_PATH/python/log_sistema.py" MSG "Alarma programada para $HORA_WAKE. Apagando."
 
-	python3 -c "
-import sys
-sys.path.append('/home/lsd/BirdNET-Pi/PiJuice/Software/Source')
-from pijuice import PiJuice
-pj = PiJuice(1, 0x14)
-pj.power.SetPowerOff(30)
-"
-	sudo poweroff
+	# PENDIENTE: acá también apagaba la v1.1 (SetPowerOff + poweroff). Ver
+	# nota equivalente más arriba en este mismo archivo.
 
 	echo "Cierre amanecer completado a las $HORA_ACTUAL"
 fi

@@ -2,22 +2,29 @@
 
 Este repositorio contiene todo el software necesario para replicar el sistema de monitoreo autónomo de aves LSD-Tector, desarrollado en el Laboratorio de Sistemas Dinámicos (LSD), Facultad de Ciencias Exactas y Naturales, Universidad de Buenos Aires.
 
-El sistema gestiona automáticamente ventanas de grabación en horarios de amanecer y atardecer, identifica especies mediante BirdNET-Pi, envía detecciones a Google Drive, y administra el ciclo de encendido y apagado de la Raspberry Pi mediante el RTC de la PiJuice HAT. Para una descripción completa del hardware y el diseño físico del dispositivo, referirse al artículo asociado.
+El sistema gestiona automáticamente ventanas de grabación en horarios de amanecer y atardecer, identifica especies mediante BirdNET-Pi, y envía detecciones a Google Drive. Para una descripción completa del hardware y el diseño físico del dispositivo, referirse al artículo asociado.
 
-Este software fue desarrollado y probado sobre una **Raspberry Pi 4 Model B (2GB RAM)** con una **PiJuice HAT** como módulo de gestión de energía. No se garantiza compatibilidad con otros modelos o configuraciones de hardware.
+Este software fue desarrollado y probado sobre una **Raspberry Pi 4 Model B (2GB RAM)**. No se garantiza compatibilidad con otros modelos o configuraciones de hardware.
+
+> [!IMPORTANT]
+> **Hardware en transición respecto al LSD-Tector 1.0/1.1.** Esta versión reemplaza la PiJuice HAT por un RTC externo **DS3231** (batería de dos celdas, gestión de energía a definir) y, más adelante, un módulo **INA219** para medir batería por voltaje/corriente. Al día de hoy:
+> - **No hay monitoreo de batería.** El código que lo hacía (watchdog o umbral predictivo) está comentado en `inicio_*.sh`, `cierre_*.sh` y `log_sistema.py`, con una nota `PENDIENTE` explicando qué retomar cuando el INA219 esté instalado. El umbral de corte ya está definido — `UMBRAL_BATERIA_V=6.9` (pack 2S, ≈3.45V/celda, ≈15% de capacidad) — comentado en `config/config_general.txt` junto con su justificación; solo falta el hardware para aplicarlo.
+> - **La Raspberry no se apaga entre ventanas todavía.** Falta el circuito que corte y reponga físicamente la alimentación a partir de la alarma del DS3231 (un MOSFET/latch disparado por su pin SQW/INT, con un temporizador de gracia para el apagado prolijo — ver la discusión de diseño del 14/8 en el cuaderno de laboratorio). Hasta que ese circuito exista, el equipo queda siempre encendido y `set_wake_rtc.py` no tiene efecto real; la implementación completa está comentada ahí mismo, lista para descomentar.
+>
+> Ninguna de estas ausencias impide poner en marcha el dispositivo: las ventanas de grabación arrancan y cierran igual, solo que sin corte de energía ni chequeo de batería.
 
 ---
 
 ## Dependencias
 
 - Raspberry Pi OS Full 64-bit (Bookworm)
-- BirdNET-Pi
+- BirdNET-Pi (opcional por ahora — ver paso 2)
 - Python 3 (incluido en Raspberry Pi OS)
 - rclone
 - astral (librería Python)
-- API Python de PiJuice
 - nmcli (incluido en Raspberry Pi OS)
 - dnsmasq y util-linux-extra
+- DS3231 (RTC externo, soportado nativamente por el kernel de Linux — no requiere ninguna librería propia)
 
 ### 1. Sistema operativo
 
@@ -28,7 +35,10 @@ Instalar **Raspberry Pi OS Full 64-bit (Bookworm)** en la microSD usando [Raspbe
 
 Una vez flasheada la microSD, insertarla en la Raspberry Pi y encenderla.
 
-### 2. BirdNET-Pi
+### 2. BirdNET-Pi (opcional por ahora)
+
+> [!NOTE]
+> Hay una versión reentrenada de BirdNET en desarrollo en paralelo. Si el objetivo inmediato es solo poner en marcha la Raspberry con el software del LSD-Tector (WiFi, portal de configuración, sincronización con Drive, RTC), este paso puede saltearse por completo y hacerse más adelante — nada del resto de la instalación depende de que BirdNET-Pi esté instalado. Si se instala ahora, tenerlo en cuenta como una instalación temporal a reemplazar cuando el modelo reentrenado esté listo.
 
 Desde la terminal de la RP, ejecutar:
 
@@ -75,7 +85,7 @@ Debe devolver `/usr/sbin/hwclock`.
 
 ### 4. Habilitar I2C
 
-La PiJuice se comunica con la Raspberry Pi mediante el protocolo I2C. Para habilitarlo:
+El DS3231 se comunica con la Raspberry Pi mediante el protocolo I2C. Para habilitarlo:
 
 ```bash
 sudo raspi-config
@@ -87,42 +97,54 @@ Navegar a **Interface Options → I2C → Enable**. Confirmar y salir. Luego rei
 sudo reboot
 ```
 
-Verificar que la PiJuice es detectada correctamente en el bus I2C (debe aparecer `14` en la dirección 0x14):
-
-```bash
-sudo i2cdetect -y 1
-```
-
 ### 5. Dependencias Python
 
 ```bash
 pip install astral --break-system-packages
 ```
 
-### 6. API Python de PiJuice
+### 6. Configurar el DS3231
 
-El paquete oficial de PiJuice no está disponible en los repositorios estándar de Raspberry OS. Instalarlo directamente desde GitHub:
+A diferencia de la PiJuice (que exponía su RTC mediante una API Python propia), el DS3231 es un chip estándar que el kernel de Linux sabe manejar directamente: una vez configurado, se comporta como cualquier reloj de hardware y se opera con `hwclock`, sin ninguna librería adicional.
 
-```bash
-git clone https://github.com/PiSupply/PiJuice.git ~/BirdNET-Pi/PiJuice
-cd ~/BirdNET-Pi/PiJuice/Software/Source
-pip install . --break-system-packages
-```
-
-Verificar que la API funciona correctamente:
+Agregar el overlay correspondiente al archivo de configuración de arranque:
 
 ```bash
-python3 -c "
-import sys
-sys.path.append('/home/lsd/BirdNET-Pi/PiJuice/Software/Source')
-from pijuice import PiJuice
-pj = PiJuice(1, 0x14)
-print(pj.status.GetStatus())
-print(pj.status.GetChargeLevel())
-"
+sudo nano /boot/firmware/config.txt
 ```
 
-Si la PiJuice responde sin errores, la instalación fue exitosa.
+Agregar al final del archivo:
+
+```
+dtoverlay=i2c-rtc,ds3231
+```
+
+Guardar y reiniciar:
+
+```bash
+sudo reboot
+```
+
+Verificar que el DS3231 aparece como dispositivo RTC del sistema:
+
+```bash
+ls /dev/rtc*
+```
+
+Debe listar `/dev/rtc0` (o `/dev/rtc1` si ya hay otro RTC registrado). Verificar que `hwclock` puede leerlo:
+
+```bash
+sudo hwclock -r
+```
+
+Debe devolver la hora actual del DS3231 sin errores. Si el reloj está muy desfasado (por ejemplo, si el módulo es nuevo y nunca se sincronizó), escribirle la hora del sistema una vez de forma manual:
+
+```bash
+sudo hwclock -w
+```
+
+> [!NOTE]
+> La alarma del DS3231 (usada para despertar la Raspberry desde apagado) todavía no se programa desde ningún script — ver la nota `PENDIENTE` al principio de este README y en `python/set_wake_rtc.py`.
 
 ### 7. Clonar el repositorio
 
@@ -135,7 +157,7 @@ git clone https://github.com/LSDArroyoGold/LSD-Tector2.0.git
 
 Los scripts se ejecutan directamente desde el repositorio, respetando su estructura de carpetas (`scripts/`, `python/`, `config/`, `systemd/`). No es necesario copiar ni mover archivos.
 
-El instalador `install.sh` se ejecuta más adelante (paso 12), una vez configurados rclone y los archivos de configuración. El instalador se encarga de dar permisos de ejecución a los scripts, instalar y habilitar los servicios de systemd, y configurar el crontab, autodetectando la ubicación del repositorio.
+El instalador `install.sh` se ejecuta más adelante (paso 10), una vez configurados rclone y los archivos de configuración. El instalador se encarga de dar permisos de ejecución a los scripts, instalar y habilitar los servicios de systemd, y configurar el crontab, autodetectando la ubicación del repositorio.
 
 ### 8. rclone
 
@@ -189,7 +211,7 @@ Seguir el asistente interactivo con las siguientes respuestas:
 - Confirmar configuración: `y`
 - Salir del asistente: `q`
 
-> **Nota sobre `client_id` y `client_secret`:** dejarlos vacíos hace que rclone utilice las credenciales OAuth por defecto, que son compartidas entre todos los usuarios de rclone. En condiciones de uso intensivo esto puede ocasionalmente generar errores del tipo `429 Too Many Requests` por exceder los límites de cuota de Google. Para uso normal del LSD-Tector (subida de pocos archivos por día) esto no representa un problema. Si se desea utilizar credenciales propias, generar un Client ID y Client Secret en Google Cloud Console siguiendo la guía oficial de rclone: [https://rclone.org/drive/#making-your-own-client-id](https://rclone.org/drive/#making-your-own-client-id). 
+> **Nota sobre `client_id` y `client_secret`:** dejarlos vacíos hace que rclone utilice las credenciales OAuth por defecto, que son compartidas entre todos los usuarios de rclone. En condiciones de uso intensivo esto puede ocasionalmente generar errores del tipo `429 Too Many Requests` por exceder los límites de cuota de Google. Para uso normal del LSD-Tector (subida de pocos archivos por día) esto no representa un problema. Si se desea utilizar credenciales propias, generar un Client ID y Client Secret en Google Cloud Console siguiendo la guía oficial de rclone: [https://rclone.org/drive/#making-your-own-client-id](https://rclone.org/drive/#making-your-own-client-id).
 
 **Verificación**
 
@@ -216,14 +238,13 @@ El archivo contiene los siguientes parámetros:
 | Parámetro | Descripción |
 |---|---|
 | `DRIVE_PATH` | Ruta de la carpeta en Google Drive donde se sincronizan datos y configuración. Puede ser una carpeta en la raíz (ej: `LSD-Tector`) o anidada (ej: `Proyectos/LSD/Tector`). |
-| `CONSUMO_W` | Potencia consumida estimada del sistema durante una ventana de grabación, en W. Reemplazar por el valor medido del sistema. |
-| `CAPACIDAD_MAH` | Capacidad nominal de la batería en mAh. Reemplazar por la capacidad de la batería utilizada. |
-| `VOLTAJE_BATERIA` | Voltaje nominal de la batería en V. Para baterías LiPo de celda única, utilizar `3.7`. |
-| `MARGEN_SEGURIDAD` | Factor multiplicador aplicado al umbral de batería para garantizar margen de operación. Valor recomendado: `1.5`. |
 | `FIRST_START` | Mantener en `TRUE` para activar el modo hotspot en el primer arranque. Una vez configurada la red WiFi exitosamente, el sistema lo cambia automáticamente a `FALSE`. |
 | `HOTSPOT_SSID` | Nombre de la red WiFi de configuración que emite el dispositivo en el primer arranque. |
 | `HOTSPOT_PASSWORD` | Contraseña de esa red WiFi de configuración. |
 | `LAT` y `LON` | Coordenadas geográficas del lugar de instalación. Pueden dejarse con valores aproximados ya que se actualizan automáticamente mediante geolocalización por IP al utilizar el modo hotspot. |
+
+> [!NOTE]
+> Los parámetros energéticos de la v1.1 (`CONSUMO_W`, `CAPACIDAD_MAH`, `VOLTAJE_BATERIA`, `MARGEN_SEGURIDAD`, `UMBRAL_BATERIA`) no están en este archivo: dependían de la PiJuice o de un watchdog de batería que todavía no existe para este hardware. El nuevo esquema por voltaje ya tiene su umbral definido (`UMBRAL_BATERIA_V=6.9`, comentado al principio del archivo junto con la justificación completa) y va a activarse cuando el INA219 esté instalado — ver la nota al principio de este README.
 
 **Editar `config_horarios.txt`:**
 
@@ -253,52 +274,7 @@ cat ~/LSD-Tector2.0/config/config_horarios.txt
 
 Revisar que todos los valores fueron completados correctamente y que se respeta el formato `CLAVE=valor` sin espacios.
 
-### 10. Configurar el perfil de batería en la PiJuice
-
-Este paso le indica a la PiJuice las características de la batería conectada para que el fuel gauge y el gestor de carga funcionen correctamente. Ejecutar el script provisto:
-
-```bash
-python3 ~/LSD-Tector2.0/python/configurar_bateria_pijuice.py
-```
-
-> **Nota:** los parámetros del perfil de batería están definidos dentro del script `configurar_bateria_pijuice.py`. Si se utiliza una batería con características distintas (capacidad, voltaje de regulación, voltaje de corte, etc.), modificar los valores correspondientes en el script antes de ejecutarlo.
-
-Verificar que el perfil quedó correctamente aplicado:
-
-```bash
-python3 -c "
-import sys
-sys.path.append('/home/lsd/BirdNET-Pi/PiJuice/Software/Source')
-from pijuice import PiJuice
-pj = PiJuice(1, 0x14)
-print(pj.config.GetBatteryProfile())
-"
-```
-
-La salida debe mostrar los parámetros configurados en el script.
-
-### 11. Configurar el comportamiento de encendido de la PiJuice
-
-Por defecto, la PiJuice enciende automáticamente la Raspberry Pi al detectar alimentación externa (por ejemplo, cuando el panel solar empieza a entregar potencia al amanecer). Este comportamiento no es deseado en el sistema LSD-Tector, donde la RP solo debe encenderse mediante la alarma programada del RTC.
-
-Para deshabilitar el encendido automático, ejecutar:
-
-```bash
-python3 -c "
-import sys
-sys.path.append('/home/lsd/BirdNET-Pi/PiJuice/Software/Source')
-from pijuice import PiJuice
-pj = PiJuice(1, 0x14)
-config = pj.config.GetPowerInputsConfig()['data']
-config['no_battery_turn_on'] = True
-pj.config.SetPowerInputsConfig(config)
-print(pj.config.GetPowerInputsConfig())
-"
-```
-
-La salida debe mostrar `'no_battery_turn_on': True`.
-
-### 12. Ejecutar el instalador
+### 10. Ejecutar el instalador
 
 El script `install.sh` configura el sistema de forma automática: da permisos de ejecución a los scripts, instala y habilita los servicios de systemd (`sync-rtc.service` y `hotspot.service`), y configura el crontab con las tareas periódicas. Autodetecta la ubicación del repositorio y el usuario del sistema.
 
@@ -309,7 +285,7 @@ cd ~/LSD-Tector2.0
 ./install.sh
 ```
 
-El `sync-rtc.service` copia la hora del RTC de la PiJuice al reloj del sistema en cada arranque, imprescindible para que las ventanas disparen a la hora correcta tras un arranque sin conexión. El `hotspot.service` activa el modo hotspot en el primer arranque cuando `FIRST_START=TRUE`. Las cinco tareas del crontab (los cuatro scripts de ventana y la rutina del botón) se ejecutan cada minuto y verifican internamente si corresponde disparar su rutina.
+El `sync-rtc.service` copia la hora del DS3231 al reloj del sistema en cada arranque (`hwclock --hctosys`), imprescindible para que las ventanas disparen a la hora correcta tras un arranque sin conexión. El `hotspot.service` activa el modo hotspot en el primer arranque cuando `FIRST_START=TRUE`. Las cinco tareas del crontab (los cuatro scripts de ventana y la rutina del botón) se ejecutan cada minuto y verifican internamente si corresponde disparar su rutina.
 
 Verificar que la instalación fue exitosa:
 
@@ -321,7 +297,7 @@ crontab -l
 
 Los servicios deben aparecer habilitados y el crontab debe listar las cinco tareas.
 
-### 13. Crear carpetas en Google Drive y subir archivos de configuración
+### 11. Crear carpetas en Google Drive y subir archivos de configuración
 
 Crear las carpetas que utilizará el sistema en Google Drive, usando la ruta definida en `DRIVE_PATH` (en los ejemplos siguientes se asume `DRIVE_PATH=LSD-Tector`):
 
@@ -362,10 +338,10 @@ Una vez completados todos los pasos de instalación, el dispositivo está listo 
    - Las coordenadas geográficas se actualizan automáticamente mediante geolocalización por IP.
    - Los horarios de amanecer y atardecer se calculan y se escriben en `config_horarios.txt`.
    - El parámetro `FIRST_START` se cambia a `FALSE`.
-   - El dispositivo programa la alarma para la próxima ventana de grabación y se apaga.
+   - El dispositivo calcula el horario de la próxima ventana de grabación y **queda encendido** (todavía no hay circuito de corte de energía — ver la nota al principio de este README).
 7. Si la conexión falla, la red de configuración vuelve a aparecer automáticamente. Reconectarse y reintentar con las credenciales correctas.
 
-A partir de este momento, el dispositivo opera de forma completamente autónoma siguiendo el ciclo programado de ventanas de grabación.
+A partir de este momento, el dispositivo opera de forma autónoma siguiendo el ciclo programado de ventanas de grabación, permaneciendo encendido de forma continua entre ellas.
 
 ---
 
@@ -373,4 +349,4 @@ A partir de este momento, el dispositivo opera de forma completamente autónoma 
 
 Una vez el dispositivo está en operación en campo, los archivos `config_horarios.txt` y `config_general.txt` en la carpeta de Google Drive definida por `DRIVE_PATH` pueden editarse desde cualquier lugar para modificar la configuración del dispositivo. Los cambios se aplican en el siguiente ciclo, cuando el dispositivo descarga la versión actualizada de Drive al final de la ventana de grabación.
 
-El archivo `log_sistema.txt` se sube a Drive al final de cada ventana y permite monitorear el estado del dispositivo de forma remota: nivel de batería, cantidad de detecciones registradas, y eventuales cancelaciones por nivel de batería insuficiente.
+El archivo `log_sistema.txt` se sube a Drive al final de cada ventana y permite monitorear el estado del dispositivo de forma remota: cantidad de detecciones registradas y eventuales cierres sin conectividad. El campo de batería en cada entrada figura como `N/A` hasta que el INA219 esté instalado — ver la nota al principio de este README.

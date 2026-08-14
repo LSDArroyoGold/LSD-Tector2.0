@@ -20,90 +20,36 @@ HORARIO_DELAY=$(echo "$HORARIO" | awk -F: '{m=$2+2; h=$1; if(m>=60){m=m-60} prin
 
 if [ "$HORA_ACTUAL" = "$HORARIO_DELAY" ]; then
 
-	UMBRAL=$(python3 -c "
-import sys
-sys.path.append('/home/lsd/BirdNET-Pi/PiJuice/Software/Source')
-from pijuice import PiJuice
-pj = PiJuice(1, 0x14)
-CONSUMO_W='$(awk -F'=' '/CONSUMO_W/{print $2}' "$CONFIG_GENERAL" | tr -d ' \r')'
-AUTO_SYNC='$(awk -F'=' '/AUTO_SYNC/{print $2}' "$CONFIG_HORARIOS" | tr -d ' \r')'
-if AUTO_SYNC == 'ON':
-	duracion_h = '$(awk -F'=' '/DURACION_AMANECER_SYNC/{print $2}' "$CONFIG_HORARIOS" | tr -d ' \r')'
-else:
-	from datetime import datetime
-	t_inicio = datetime.strptime('$(awk -F'=' '/INICIO_AMANECER/{print $2}' "$CONFIG_HORARIOS" | tr -d ' \r')', '%H:%M')
-	t_fin = datetime.strptime('$(awk -F'=' '/FIN_AMANECER/{print $2}' "$CONFIG_HORARIOS" | tr -d ' \r')', '%H:%M')
-	duracion_h = (t_fin - t_inicio).seconds / 3600
-CONSUMO_WH = float(CONSUMO_W) * duracion_h
-CAPACIDAD_MAH = $(awk -F'=' '/CAPACIDAD_MAH/{print $2}' "$CONFIG_GENERAL" | tr -d ' \r')
-VOLTAJE = $(awk -F'=' '/VOLTAJE_BATERIA/{print $2}' "$CONFIG_GENERAL" | tr -d ' \r')
-MARGEN = $(awk -F'=' '/MARGEN_SEGURIDAD/{print $2}' "$CONFIG_GENERAL" | tr -d ' \r')
-capacidad_wh = (CAPACIDAD_MAH/1000)*VOLTAJE
-umbral = (CONSUMO_WH/capacidad_wh)*100*MARGEN
-print(int(umbral))
-")
+	# PENDIENTE: chequeo de bateria por INA219. La v1.1 calculaba aca un
+	# umbral predictivo (formula CONSUMO_W/CAPACIDAD_MAH/VOLTAJE_BATERIA/
+	# MARGEN_SEGURIDAD) via la API de PiJuice, y cancelaba la ventana si el
+	# nivel no alcanzaba. Sin PiJuice y sin el INA219 armado todavia, no hay
+	# forma de medir bateria: la ventana arranca siempre. Cuando el INA219
+	# este instalado, retomar el chequeo aca (o, mejor, migrar al esquema de
+	# watchdog reactivo de la v1.1 -- ver chequeo_bateria.sh -- en vez de
+	# volver al corte predictivo). El umbral a usar ya esta definido --
+	# UMBRAL_BATERIA_V=6.9 (ver config/config_general.txt) -- falta unicamente
+	# el hardware y la lectura del sensor.
 
-	NIVEL=$(python3 -c "
-import sys
-sys.path.append('/home/lsd/BirdNET-Pi/PiJuice/Software/Source')
-from pijuice import PiJuice
-pj = PiJuice(1, 0x14)
-print(pj.status.GetChargeLevel()['data'])
-")
+	python3 "$BASE_PATH/python/log_sistema.py" INICIO amanecer
 
-	if [ "$NIVEL" -lt "$UMBRAL" ]; then
+	HORA_CIERRE=$(awk -F'=' '/FIN_AMANECER/{print $2}' "$CONFIG_HORARIOS" | tr -d ' \r')
+	python3 "$BASE_PATH/python/log_sistema.py" MSG "Cierre de ventana a las $HORA_CIERRE"
 
-		python3 "$BASE_PATH/python/log_sistema.py" CANCELADA amanecer
+	sudo nmcli radio wifi on
+	INTENTOS=0
+	until ping -c 1 google.com &>/dev/null || [ $INTENTOS -ge 6 ]; do
+		sleep 5
+		INTENTOS=$((INTENTOS + 1))
+	done
 
-		sudo nmcli radio wifi on
-		INTENTOS=0
-		until ping -c 1 google.com &>/dev/null || [ $INTENTOS -ge 6 ]; do
-			sleep 5
-			INTENTOS=$((INTENTOS + 1))
-		done
-
-		if ping -c 1 google.com &>/dev/null; then
-			rclone copy "$BASE_PATH/log_sistema.txt" "gdrive:$DRIVE_PATH/"
-		fi
-
+	if ! ping -c 1 google.com &>/dev/null; then
+		echo "Sin conexión, abortando"
 		sudo nmcli radio wifi off
-		sudo chown "$REAL_USER:$REAL_USER" "$USER_HOME/.config/rclone/rclone.conf"
-
-		HORA_WAKE=$(awk -F'=' '/INICIO_ATARDECER/{print $2}' "$CONFIG_HORARIOS" | tr -d '\r')
-		python3 "$BASE_PATH/python/set_wake_pijuice.py" $HORA_WAKE
-		python3 "$BASE_PATH/python/log_sistema.py" MSG "Próxima ventana: atardecer a las $HORA_WAKE"
-		python3 "$BASE_PATH/python/log_sistema.py" MSG "Alarma programada para $HORA_WAKE. Apagando."
-
-		python3 -c "
-import sys
-sys.path.append('/home/lsd/BirdNET-Pi/PiJuice/Software/Source')
-from pijuice import PiJuice
-pj = PiJuice(1, 0x14)
-pj.power.SetPowerOff(30)
-"
-		sudo poweroff
-	else
-
-		python3 "$BASE_PATH/python/log_sistema.py" INICIO amanecer
-
-		HORA_CIERRE=$(awk -F'=' '/FIN_AMANECER/{print $2}' "$CONFIG_HORARIOS" | tr -d ' \r')
-		python3 "$BASE_PATH/python/log_sistema.py" MSG "Cierre de ventana a las $HORA_CIERRE"
-
-		sudo nmcli radio wifi on
-		INTENTOS=0
-		until ping -c 1 google.com &>/dev/null || [ $INTENTOS -ge 6 ]; do
-			sleep 5
-			INTENTOS=$((INTENTOS + 1))
-		done
-
-		if ! ping -c 1 google.com &>/dev/null; then
-			echo "Sin conexión, abortando"
-			sudo nmcli radio wifi off
-			exit 1
-		fi
-
-		rclone copy "$BASE_PATH/log_sistema.txt" "gdrive:$DRIVE_PATH/"
-		sudo nmcli radio wifi off
-		sudo chown "$REAL_USER:$REAL_USER" "$USER_HOME/.config/rclone/rclone.conf"
+		exit 1
 	fi
+
+	rclone copy "$BASE_PATH/log_sistema.txt" "gdrive:$DRIVE_PATH/"
+	sudo nmcli radio wifi off
+	sudo chown "$REAL_USER:$REAL_USER" "$USER_HOME/.config/rclone/rclone.conf"
 fi
