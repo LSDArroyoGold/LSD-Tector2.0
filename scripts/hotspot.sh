@@ -61,8 +61,6 @@ if [ "$FIRST_START" != "TRUE" ]; then
     exit 0
 fi
 
-log "Modo primer arranque: activando hotspot"
-
 sudo rfkill unblock wifi
 sleep 2
 sudo nmcli radio wifi on
@@ -94,7 +92,7 @@ fi
 sleep 5
 
 IP_HOTSPOT=$(ip addr show wlan0 | grep -oP 'inet \K[\d.]+')
-log "Hotspot activo en IP: $IP_HOTSPOT"
+log "Hotspot activo (IP: $IP_HOTSPOT)"
 
 # Lanzar portal y capturar exit code
 sudo python3 "$BASE_PATH/python/portal_configuracion.py"
@@ -111,16 +109,14 @@ fi
 sudo systemctl restart systemd-timesyncd
 sleep 5
 python3 "$BASE_PATH/python/sync_rtc.py"
-log "RTC sincronizado."
 
-log "Conexión WiFi exitosa."
+SSID_CONECTADA=$(nmcli -t -f active,ssid dev wifi | awk -F: '$1=="yes"{print $2; exit}')
 
 UBICACION=$(curl -s ipinfo.io/json)
 LAT=$(echo $UBICACION | python3 -c "import sys,json; coords=json.load(sys.stdin)['loc'].split(','); print(coords[0])")
 LON=$(echo $UBICACION | python3 -c "import sys,json; coords=json.load(sys.stdin)['loc'].split(','); print(coords[1])")
 sed -i "s/LAT=.*/LAT=$LAT/" "$CONFIG_PATH"
 sed -i "s/LON=.*/LON=$LON/" "$CONFIG_PATH"
-log "Ubicación detectada: $LAT, $LON"
 
 # Marcar FIRST_START = FALSE
 sed -i 's/FIRST_START=TRUE/FIRST_START=FALSE/' "$CONFIG_PATH"
@@ -138,18 +134,15 @@ INICIO_ATARDECER_MIN=$(echo "$INICIO_ATARDECER" | sed 's/^0*//')
 
 if [ "$INICIO_AMANECER_MIN" -gt "$HORA_ACTUAL_MIN" ]; then
     HORA_WAKE=$(awk -F'=' '/INICIO_AMANECER/{print $2}' "$CONFIG_HORARIOS" | tr -d ' \r')
-    log "Próxima ventana: amanecer a las $HORA_WAKE"
 elif [ "$INICIO_ATARDECER_MIN" -gt "$HORA_ACTUAL_MIN" ]; then
     HORA_WAKE=$(awk -F'=' '/INICIO_ATARDECER/{print $2}' "$CONFIG_HORARIOS" | tr -d ' \r')
-    log "Próxima ventana: atardecer a las $HORA_WAKE"
 else
     HORA_WAKE=$(awk -F'=' '/INICIO_AMANECER/{print $2}' "$CONFIG_HORARIOS" | tr -d ' \r')
-    log "Ambas ventanas pasaron hoy. Próxima ventana: amanecer mañana a las $HORA_WAKE"
 fi
 
 # Programar alarma (por ahora sin efecto -- ver PENDIENTE en set_wake_rtc.py)
 python3 "$BASE_PATH/python/set_wake_rtc.py" $HORA_WAKE
-log "Próxima ventana calculada para $HORA_WAKE."
+log "Conectado a $SSID_CONECTADA. Próxima ventana: $HORA_WAKE."
 
 # Subir log a Drive
 rclone copy "$LOG_PATH" "gdrive:$DRIVE_PATH/"

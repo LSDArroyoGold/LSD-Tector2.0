@@ -36,13 +36,12 @@ if [ "$HORA_ACTUAL" = "$HORARIO" ]; then
         HORA_FIN=$(awk -F'=' '/FIN_AMANECER/{print $2}' "$CONFIG_HORARIOS" | tr -d ' \r' | tr -d ':')
         DETECCIONES=$(find "$USER_HOME/BirdSongs/Extracted/By_Date/$(date +%Y-%m-%d)/" -name "*.mp3" 2>/dev/null | grep -oP "birdnet-\K[0-9]{2}:[0-9]{2}" | awk -F: -v ini="$HORA_INICIO" -v fin="$HORA_FIN" '{t=$1*100+$2; if(t>=ini && t<=fin) print}' | wc -l)
 
-        python3 "$BASE_PATH/python/log_sistema.py" SIN_CONEXION amanecer $DETECCIONES
+        HORA_WAKE=$(awk -F'=' '/INICIO_ATARDECER/{print $2}' "$CONFIG_HORARIOS" | tr -d '\r')
+        python3 "$BASE_PATH/python/log_sistema.py" SIN_CONEXION amanecer $HORA_WAKE $DETECCIONES
 
         bash "$BASE_PATH/scripts/auto_sync_horarios.sh"
 
-        HORA_WAKE=$(awk -F'=' '/INICIO_ATARDECER/{print $2}' "$CONFIG_HORARIOS" | tr -d '\r')
         python3 "$BASE_PATH/python/set_wake_rtc.py" $HORA_WAKE
-        python3 "$BASE_PATH/python/log_sistema.py" MSG "Próxima ventana: atardecer a las $HORA_WAKE"
 
         sudo chown "$REAL_USER:$REAL_USER" "$USER_HOME/.config/rclone/rclone.conf"
 
@@ -66,21 +65,21 @@ if [ "$HORA_ACTUAL" = "$HORARIO" ]; then
 	HORA_FIN=$(awk -F'=' '/FIN_AMANECER/{print $2}' "$CONFIG_HORARIOS" | tr -d ' \r' | tr -d ':')
 	DETECCIONES=$(find "$USER_HOME/BirdSongs/Extracted/By_Date/$(date +%Y-%m-%d)/" -name "*.mp3" 2>/dev/null | grep -oP "birdnet-\K[0-9]{2}:[0-9]{2}" | awk -F: -v ini="$HORA_INICIO" -v fin="$HORA_FIN" '{t=$1*100+$2; if(t>=ini && t<=fin) print}' | wc -l)
 
-	python3 "$BASE_PATH/python/log_sistema.py" FIN amanecer $DETECCIONES
-
 	bash "$BASE_PATH/scripts/auto_sync_horarios.sh"
 
 	rclone copy "gdrive:$DRIVE_PATH/config_horarios.txt" "$BASE_PATH/config/"
+
+	HORA_WAKE=$(awk -F'=' '/INICIO_ATARDECER/{print $2}' "$CONFIG_HORARIOS" | tr -d '\r')
+
+	python3 "$BASE_PATH/python/log_sistema.py" FIN amanecer $HORA_WAKE $DETECCIONES
+
 	rclone copy "$BASE_PATH/log_sistema.txt" "gdrive:$DRIVE_PATH/"
 
 	sudo nmcli radio wifi off
 
-	HORA_WAKE=$(awk -F'=' '/INICIO_ATARDECER/{print $2}' "$CONFIG_HORARIOS" | tr -d '\r')
-
 	sudo chown "$REAL_USER:$REAL_USER" "$USER_HOME/.config/rclone/rclone.conf"
 
 	python3 "$BASE_PATH/python/set_wake_rtc.py" $HORA_WAKE
-	python3 "$BASE_PATH/python/log_sistema.py" MSG "Próxima ventana: atardecer a las $HORA_WAKE"
 
 	# PENDIENTE: acá también apagaba la v1.1 (SetPowerOff + poweroff). Ver
 	# nota equivalente más arriba en este mismo archivo.

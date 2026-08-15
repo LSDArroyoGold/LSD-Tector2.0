@@ -23,15 +23,18 @@ else:
 	ventana = sys.argv[2]
 
 	if evento == 'FIN':
-		detecciones = sys.argv[3] if len(sys.argv) > 3 else '0'
-		linea = f"[{timestamp}] FIN ventana {ventana} | Batería: {nivel} | Detecciones subidas: {detecciones}\n"
+		proxima_ventana = sys.argv[3]
+		detecciones = sys.argv[4] if len(sys.argv) > 4 else '0'
+		linea = f"[{timestamp}] FIN ventana {ventana} | Batería: {nivel} | Detecciones subidas: {detecciones} | Próxima ventana: {proxima_ventana}\n"
 	elif evento == 'CANCELADA':
 		linea = f"[{timestamp}] VENTANA cancelada - {ventana} | Batería: {nivel}\n"
 	elif evento == 'SIN_CONEXION':
-		detecciones = sys.argv[3] if len(sys.argv) > 3 else '0'
-		linea = f"[{timestamp}] FIN ventana {ventana} | SIN CONEXIÓN, archivos se subirán en la próxima ventana | Batería: {nivel} | Detecciones: {detecciones}\n"
+		proxima_ventana = sys.argv[3]
+		detecciones = sys.argv[4] if len(sys.argv) > 4 else '0'
+		linea = f"[{timestamp}] FIN ventana {ventana} | SIN CONEXIÓN, archivos se subirán en la próxima ventana | Batería: {nivel} | Detecciones: {detecciones} | Próxima ventana: {proxima_ventana}\n"
 	else:
-		linea = f"[{timestamp}] INICIO ventana {ventana} | Batería: {nivel}\n"
+		fin_esperado = sys.argv[3]
+		linea = f"[{timestamp}] INICIO ventana {ventana} | Batería: {nivel} | Fin esperado: {fin_esperado}\n"
 
 with open(LOG_SISTEMA,'a') as f:
 	f.write(linea)
