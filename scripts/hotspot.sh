@@ -142,7 +142,7 @@ fi
 
 # Programar alarma (por ahora sin efecto -- ver PENDIENTE en set_wake_rtc.py)
 python3 "$BASE_PATH/python/set_wake_rtc.py" $HORA_WAKE
-log "Conectado a $SSID_CONECTADA. Próxima ventana: $HORA_WAKE."
+log "Conectado a $SSID_CONECTADA. Próxima ventana: $HORA_WAKE. Apagando."
 
 # Subir log a Drive
 rclone copy "$LOG_PATH" "gdrive:$DRIVE_PATH/"
