@@ -140,9 +140,11 @@ else
     HORA_WAKE=$(awk -F'=' '/INICIO_AMANECER/{print $2}' "$CONFIG_HORARIOS" | tr -d ' \r')
 fi
 
+PROXIMA_VENTANA=$(echo "$HORA_WAKE" | awk -F: '{m=$2+2; h=$1; if(m>=60){m=m-60} printf "%02d:%02d\n", h, m}')
+
 # Programar alarma (por ahora sin efecto -- ver PENDIENTE en set_wake_rtc.py)
 python3 "$BASE_PATH/python/set_wake_rtc.py" $HORA_WAKE
-log "Conectado a $SSID_CONECTADA. Próxima ventana: $HORA_WAKE. Apagando."
+log "Conectado a $SSID_CONECTADA. Próxima ventana: $PROXIMA_VENTANA. Apagando."
 
 # Subir log a Drive
 rclone copy "$LOG_PATH" "gdrive:$DRIVE_PATH/"

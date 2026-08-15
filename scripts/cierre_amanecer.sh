@@ -37,7 +37,8 @@ if [ "$HORA_ACTUAL" = "$HORARIO" ]; then
         DETECCIONES=$(find "$USER_HOME/BirdSongs/Extracted/By_Date/$(date +%Y-%m-%d)/" -name "*.mp3" 2>/dev/null | grep -oP "birdnet-\K[0-9]{2}:[0-9]{2}" | awk -F: -v ini="$HORA_INICIO" -v fin="$HORA_FIN" '{t=$1*100+$2; if(t>=ini && t<=fin) print}' | wc -l)
 
         HORA_WAKE=$(awk -F'=' '/INICIO_ATARDECER/{print $2}' "$CONFIG_HORARIOS" | tr -d '\r')
-        python3 "$BASE_PATH/python/log_sistema.py" SIN_CONEXION amanecer $HORA_WAKE $DETECCIONES
+        PROXIMA_VENTANA=$(echo "$HORA_WAKE" | awk -F: '{m=$2+2; h=$1; if(m>=60){m=m-60} printf "%02d:%02d\n", h, m}')
+        python3 "$BASE_PATH/python/log_sistema.py" SIN_CONEXION amanecer $PROXIMA_VENTANA $DETECCIONES
 
         bash "$BASE_PATH/scripts/auto_sync_horarios.sh"
 
@@ -70,8 +71,9 @@ if [ "$HORA_ACTUAL" = "$HORARIO" ]; then
 	rclone copy "gdrive:$DRIVE_PATH/config_horarios.txt" "$BASE_PATH/config/"
 
 	HORA_WAKE=$(awk -F'=' '/INICIO_ATARDECER/{print $2}' "$CONFIG_HORARIOS" | tr -d '\r')
+	PROXIMA_VENTANA=$(echo "$HORA_WAKE" | awk -F: '{m=$2+2; h=$1; if(m>=60){m=m-60} printf "%02d:%02d\n", h, m}')
 
-	python3 "$BASE_PATH/python/log_sistema.py" FIN amanecer $HORA_WAKE $DETECCIONES
+	python3 "$BASE_PATH/python/log_sistema.py" FIN amanecer $PROXIMA_VENTANA $DETECCIONES
 
 	rclone copy "$BASE_PATH/log_sistema.txt" "gdrive:$DRIVE_PATH/"
 
