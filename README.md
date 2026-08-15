@@ -17,7 +17,7 @@ Este software fue desarrollado y probado sobre una **Raspberry Pi 4 Model B (2GB
 
 ## Dependencias
 
-- Raspberry Pi OS Full 64-bit (Bookworm)
+- Raspberry Pi OS Lite 64-bit (Bookworm)
 - BirdNET-Pi (opcional por ahora — ver paso 2)
 - Python 3 (incluido en Raspberry Pi OS)
 - rclone
@@ -28,7 +28,10 @@ Este software fue desarrollado y probado sobre una **Raspberry Pi 4 Model B (2GB
 
 ### 1. Sistema operativo
 
-Instalar **Raspberry Pi OS Full 64-bit (Bookworm)** en la microSD usando [Raspberry Pi Imager](https://www.raspberrypi.com/software/). Durante el proceso de flasheo, en la sección de configuración avanzada del Imager (ícono del engranaje), crear un usuario con nombre y contraseña a elección.
+Instalar **Raspberry Pi OS Lite 64-bit (Bookworm)** en la microSD usando [Raspberry Pi Imager](https://www.raspberrypi.com/software/). Durante el proceso de flasheo, en la sección de configuración avanzada del Imager (ícono del engranaje), crear un usuario con nombre y contraseña a elección, y habilitar SSH.
+
+> [!NOTE]
+> Se usa Lite y no Full: el dispositivo corre siempre headless (todo el manejo es por SSH/cron), y el entorno gráfico de Full no aporta nada salvo consumo de batería — en la v1.1 medimos ~19% de reducción real al sacarlo de encendido permanente. Arrancar directo con Lite evita ese ajuste manual.
 
 > [!NOTE]
 > Los scripts detectan automáticamente la ubicación del repositorio y el usuario del sistema, por lo que no es necesario usar un nombre de usuario específico ni una ruta fija. El repositorio puede clonarse en cualquier ubicación y con cualquier usuario.
