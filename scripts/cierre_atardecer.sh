@@ -30,21 +30,21 @@ if [ "$HORA_ACTUAL" = "$HORARIO" ]; then
 		sudo nmcli radio wifi off
 
 		find "$USER_HOME/BirdSongs/Extracted/By_Date/" -name "*.png" -delete
-    	rm -rf "$USER_HOME/BirdSongs/Extracted/Charts/"*
+		rm -rf "$USER_HOME/BirdSongs/Extracted/Charts/"*
 
 		HORA_INICIO=$(awk -F'=' '/INICIO_ATARDECER/{print $2}' "$CONFIG_HORARIOS" | tr -d ' \r' | tr -d ':')
-        HORA_FIN=$(awk -F'=' '/FIN_ATARDECER/{print $2}' "$CONFIG_HORARIOS" | tr -d ' \r' | tr -d ':')
-        DETECCIONES=$(find "$USER_HOME/BirdSongs/Extracted/By_Date/$(date +%Y-%m-%d)/" -name "*.mp3" 2>/dev/null | grep -oP "birdnet-\K[0-9]{2}:[0-9]{2}" | awk -F: -v ini="$HORA_INICIO" -v fin="$HORA_FIN" '{t=$1*100+$2; if(t>=ini && t<=fin) print}' | wc -l)
+		HORA_FIN=$(awk -F'=' '/FIN_ATARDECER/{print $2}' "$CONFIG_HORARIOS" | tr -d ' \r' | tr -d ':')
+		DETECCIONES=$(find "$USER_HOME/BirdSongs/Extracted/By_Date/$(date +%Y-%m-%d)/" -name "*.mp3" 2>/dev/null | grep -oP "birdnet-\K[0-9]{2}:[0-9]{2}" | awk -F: -v ini="$HORA_INICIO" -v fin="$HORA_FIN" '{t=$1*100+$2; if(t>=ini && t<=fin) print}' | wc -l)
 
-        HORA_WAKE=$(awk -F'=' '/INICIO_AMANECER/{print $2}' "$CONFIG_HORARIOS" | tr -d '\r')
-        PROXIMA_VENTANA=$(echo "$HORA_WAKE" | awk -F: '{m=$2+2; h=$1; if(m>=60){m=m-60} printf "%02d:%02d\n", h, m}')
-        python3 "$BASE_PATH/python/log_sistema.py" SIN_CONEXION atardecer $PROXIMA_VENTANA $DETECCIONES
+		HORA_WAKE=$(awk -F'=' '/INICIO_AMANECER/{print $2}' "$CONFIG_HORARIOS" | tr -d '\r')
+		PROXIMA_VENTANA=$(echo "$HORA_WAKE" | awk -F: '{m=$2+2; h=$1; if(m>=60){m=m-60} printf "%02d:%02d\n", h, m}')
+		python3 "$BASE_PATH/python/log_sistema.py" SIN_CONEXION atardecer $PROXIMA_VENTANA $DETECCIONES
 
-        bash "$BASE_PATH/scripts/auto_sync_horarios.sh"
+		bash "$BASE_PATH/scripts/auto_sync_horarios.sh"
 
-        python3 "$BASE_PATH/python/set_wake_rtc.py" $HORA_WAKE
+		python3 "$BASE_PATH/python/set_wake_rtc.py" $HORA_WAKE
 
-        sudo chown "$REAL_USER:$REAL_USER" "$USER_HOME/.config/rclone/rclone.conf"
+		sudo chown "$REAL_USER:$REAL_USER" "$USER_HOME/.config/rclone/rclone.conf"
 
 		# PENDIENTE: ver nota de cierre_amanecer.sh sobre el apagado
 		# (SetPowerOff + poweroff de la v1.1) -- sigue sin circuito de corte.

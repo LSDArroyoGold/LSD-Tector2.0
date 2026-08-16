@@ -190,10 +190,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def do_POST(self):
         content_length = self.headers.get('Content-Length')
         if not content_length:
-                self.send_response(302)
-                self.send_header('Location', '/')
-                self.end_headers()
-                return
+            self.send_response(302)
+            self.send_header('Location', '/')
+            self.end_headers()
+            return
         length = int(content_length)
         data = urllib.parse.parse_qs(self.rfile.read(length).decode())
         ssid = data.get('ssid', [''])[0]

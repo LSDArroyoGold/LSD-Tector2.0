@@ -20,7 +20,7 @@ HOTSPOT_SSID=$(awk -F'=' '/^HOTSPOT_SSID=/{print $2}' "$CONFIG_PATH" | tr -d '\r
 HOTSPOT_PASSWORD=$(awk -F'=' '/^HOTSPOT_PASSWORD=/{print $2}' "$CONFIG_PATH" | tr -d '\r')
 
 log() {
-    python3 "$BASE_PATH/python/log_sistema.py" MSG "$1"
+	python3 "$BASE_PATH/python/log_sistema.py" MSG "$1"
 }
 
 FIRST_START=$(awk -F'=' '/FIRST_START/{print $2}' "$CONFIG_PATH" | tr -d '\r')
@@ -39,7 +39,7 @@ print(val)
 ")
 
 if [ "$FIRST_START" != "TRUE" ] && [ "$BUTTON_FLAG" != "1" ]; then
-    exit 0
+	exit 0
 fi
 
 if [ "$BUTTON_FLAG" = "1" ]; then
@@ -53,12 +53,12 @@ import time; time.sleep(0.1)
 GPIO.output(25, GPIO.HIGH)
 GPIO.cleanup()
 "
-    sed -i 's/FIRST_START=.*/FIRST_START=TRUE/' "$CONFIG_PATH"
-    FIRST_START="TRUE"
+	sed -i 's/FIRST_START=.*/FIRST_START=TRUE/' "$CONFIG_PATH"
+	FIRST_START="TRUE"
 fi
 
 if [ "$FIRST_START" != "TRUE" ]; then
-    exit 0
+	exit 0
 fi
 
 sudo rfkill unblock wifi
@@ -67,25 +67,25 @@ sudo nmcli radio wifi on
 sleep 2
 
 levantar_hotspot() {
-    sudo ip addr flush dev wlan0
-    sleep 1
-    sudo pkill dnsmasq 2>/dev/null
-    sleep 2
-    sudo nmcli device wifi hotspot ifname wlan0 ssid "$HOTSPOT_SSID" password "$HOTSPOT_PASSWORD" con-name Hotspot
-    sleep 3
-    sudo nmcli connection modify Hotspot ipv4.addresses 192.168.4.1/24 ipv4.method shared
-    sudo nmcli connection up Hotspot
+	sudo ip addr flush dev wlan0
+	sleep 1
+	sudo pkill dnsmasq 2>/dev/null
+	sleep 2
+	sudo nmcli device wifi hotspot ifname wlan0 ssid "$HOTSPOT_SSID" password "$HOTSPOT_PASSWORD" con-name Hotspot
+	sleep 3
+	sudo nmcli connection modify Hotspot ipv4.addresses 192.168.4.1/24 ipv4.method shared
+	sudo nmcli connection up Hotspot
 }
 
 levantar_hotspot
 if [ $? -ne 0 ]; then
-    log "Primer intento fallido. Reintentando hotspot..."
-    sleep 5
-    levantar_hotspot
-    if [ $? -ne 0 ]; then
-        log "Error: no se pudo levantar el hotspot después de dos intentos."
-        exit 1
-    fi
+	log "Primer intento fallido. Reintentando hotspot..."
+	sleep 5
+	levantar_hotspot
+	if [ $? -ne 0 ]; then
+		log "Error: no se pudo levantar el hotspot después de dos intentos."
+		exit 1
+	fi
 fi
 
 
@@ -99,8 +99,8 @@ sudo python3 "$BASE_PATH/python/portal_configuracion.py"
 EXIT_CODE=$?
 
 if [ $EXIT_CODE -ne 0 ]; then
-    log "Conexión fallida. Hotspot reactivado, esperando nuevas credenciales."
-    exit 1
+	log "Conexión fallida. Hotspot reactivado, esperando nuevas credenciales."
+	exit 1
 fi
 
 # --- CONEXION EXITOSA ---
@@ -133,11 +133,11 @@ INICIO_AMANECER_MIN=$(echo "$INICIO_AMANECER" | sed 's/^0*//')
 INICIO_ATARDECER_MIN=$(echo "$INICIO_ATARDECER" | sed 's/^0*//')
 
 if [ "$INICIO_AMANECER_MIN" -gt "$HORA_ACTUAL_MIN" ]; then
-    HORA_WAKE=$(awk -F'=' '/INICIO_AMANECER/{print $2}' "$CONFIG_HORARIOS" | tr -d ' \r')
+	HORA_WAKE=$(awk -F'=' '/INICIO_AMANECER/{print $2}' "$CONFIG_HORARIOS" | tr -d ' \r')
 elif [ "$INICIO_ATARDECER_MIN" -gt "$HORA_ACTUAL_MIN" ]; then
-    HORA_WAKE=$(awk -F'=' '/INICIO_ATARDECER/{print $2}' "$CONFIG_HORARIOS" | tr -d ' \r')
+	HORA_WAKE=$(awk -F'=' '/INICIO_ATARDECER/{print $2}' "$CONFIG_HORARIOS" | tr -d ' \r')
 else
-    HORA_WAKE=$(awk -F'=' '/INICIO_AMANECER/{print $2}' "$CONFIG_HORARIOS" | tr -d ' \r')
+	HORA_WAKE=$(awk -F'=' '/INICIO_AMANECER/{print $2}' "$CONFIG_HORARIOS" | tr -d ' \r')
 fi
 
 PROXIMA_VENTANA=$(echo "$HORA_WAKE" | awk -F: '{m=$2+2; h=$1; if(m>=60){m=m-60} printf "%02d:%02d\n", h, m}')

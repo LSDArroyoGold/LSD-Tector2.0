@@ -33,7 +33,7 @@ echo "==> Instalando servicios systemd"
 
 # hotspot.service: reemplazar el placeholder __BASE_PATH__ por la ruta real
 sed "s|__BASE_PATH__|$BASE_PATH|g" "$SYSTEMD_DIR/hotspot.service" \
-    | sudo tee /etc/systemd/system/hotspot.service > /dev/null
+	| sudo tee /etc/systemd/system/hotspot.service > /dev/null
 
 # sync-rtc.service: no tiene rutas del proyecto, se copia tal cual
 sudo cp "$SYSTEMD_DIR/sync-rtc.service" /etc/systemd/system/sync-rtc.service

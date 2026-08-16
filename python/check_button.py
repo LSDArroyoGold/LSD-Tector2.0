@@ -16,9 +16,9 @@ if GPIO.input(24) == 1:
     import time; time.sleep(0.1)
     GPIO.output(25, GPIO.HIGH)
     GPIO.cleanup()
-    
+
     # Marcar FIRST_START y reiniciar
-    subprocess.run(['sed', '-i', 's/FIRST_START=.*/FIRST_START=TRUE/', 
+    subprocess.run(['sed', '-i', 's/FIRST_START=.*/FIRST_START=TRUE/',
                    str(CONFIG_GENERAL)])
     subprocess.run(['sudo', 'reboot'])
 else:

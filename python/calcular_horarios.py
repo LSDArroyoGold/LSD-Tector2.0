@@ -47,7 +47,7 @@ print(f"fin_amanecer = {fin_amanecer}")
 import re
 
 with open(CONFIG_HORARIOS,'r') as f:
-	contenido = f.read()
+    contenido = f.read()
 
 contenido = re.sub(r'INICIO_AMANECER=.*', f'INICIO_AMANECER={inicio_amanecer}', contenido)
 contenido = re.sub(r'FIN_AMANECER=.*', f'FIN_AMANECER={fin_amanecer}', contenido)
@@ -55,7 +55,7 @@ contenido = re.sub(r'INICIO_ATARDECER=.*', f'INICIO_ATARDECER={inicio_atardecer}
 contenido = re.sub(r'FIN_ATARDECER=.*', f'FIN_ATARDECER={fin_atardecer}', contenido)
 
 with open(CONFIG_HORARIOS,'w') as f:
-	f.write(contenido)
+    f.write(contenido)
 
 import subprocess
 subprocess.run(['rclone', 'copy', str(CONFIG_HORARIOS), f'gdrive:{DRIVE_PATH}/'])
