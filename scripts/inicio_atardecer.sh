@@ -41,6 +41,7 @@ if [ "$HORA_ACTUAL" = "$HORARIO_DELAY" ]; then
 	fi
 
 	rclone copy "$BASE_PATH/log_sistema.txt" "gdrive:$DRIVE_PATH/"
+	bash "$BASE_PATH/scripts/generar_log_reciente.sh"
 
 	bash "$BASE_PATH/scripts/actualizar_repo.sh"
 

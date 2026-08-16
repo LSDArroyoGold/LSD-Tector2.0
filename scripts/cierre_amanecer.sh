@@ -60,7 +60,7 @@ if [ "$HORA_ACTUAL" = "$HORARIO" ]; then
 	find "$USER_HOME/BirdSongs/Extracted/By_Date/" -name "*.png" -delete
 	rm -rf "$USER_HOME/BirdSongs/Extracted/Charts/"*
 
-	rclone copy "$USER_HOME/BirdSongs/Extracted/By_Date/" "gdrive:$DRIVE_PATH/BirdNET_Detecciones" --include "*.mp3"
+	rclone copy "$USER_HOME/BirdSongs/Extracted/By_Date/" "gdrive:$DRIVE_PATH/Detecciones" --include "*.mp3"
 
 	HORA_INICIO=$(awk -F'=' '/INICIO_AMANECER/{print $2}' "$CONFIG_HORARIOS" | tr -d ' \r' | tr -d ':')
 	HORA_FIN=$(awk -F'=' '/FIN_AMANECER/{print $2}' "$CONFIG_HORARIOS" | tr -d ' \r' | tr -d ':')
@@ -76,6 +76,7 @@ if [ "$HORA_ACTUAL" = "$HORARIO" ]; then
 	python3 "$BASE_PATH/python/log_sistema.py" FIN amanecer $PROXIMA_VENTANA $DETECCIONES
 
 	rclone copy "$BASE_PATH/log_sistema.txt" "gdrive:$DRIVE_PATH/"
+	bash "$BASE_PATH/scripts/generar_log_reciente.sh"
 
 	sudo nmcli radio wifi off
 

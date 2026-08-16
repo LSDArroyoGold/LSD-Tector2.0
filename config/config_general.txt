@@ -1,6 +1,6 @@
 # Ruta de la carpeta en Google Drive donde se sincronizan datos y configuración
 # Puede ser una carpeta en la raíz (ej: LSD-Tector) o anidada (ej: Proyectos/LSD/Tector)
-DRIVE_PATH=LSD-Tector
+DRIVE_PATH=Laboratorio 7/Tector 2
 
 # -------------------------
 

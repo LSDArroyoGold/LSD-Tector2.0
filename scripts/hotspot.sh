@@ -148,6 +148,7 @@ log "Conectado a $SSID_CONECTADA. Próxima ventana: $PROXIMA_VENTANA. Apagando."
 
 # Subir log a Drive
 rclone copy "$LOG_PATH" "gdrive:$DRIVE_PATH/"
+bash "$BASE_PATH/scripts/generar_log_reciente.sh"
 sudo nmcli radio wifi off
 
 sudo chown "$REAL_USER:$REAL_USER" "$USER_HOME/.config/rclone/rclone.conf"

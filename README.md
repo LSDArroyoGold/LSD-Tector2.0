@@ -302,29 +302,29 @@ Los servicios deben aparecer habilitados y el crontab debe listar las cinco tare
 
 ### 11. Crear carpetas en Google Drive y subir archivos de configuración
 
-Crear las carpetas que utilizará el sistema en Google Drive, usando la ruta definida en `DRIVE_PATH` (en los ejemplos siguientes se asume `DRIVE_PATH=LSD-Tector`):
+Crear las carpetas que utilizará el sistema en Google Drive, usando la ruta definida en `DRIVE_PATH` (en los ejemplos siguientes se asume `DRIVE_PATH=Laboratorio 7/Tector 2`, el valor real usado por este dispositivo):
 
 ```bash
-rclone mkdir "gdrive:LSD-Tector"
-rclone mkdir "gdrive:LSD-Tector/BirdNET_Detecciones"
+rclone mkdir "gdrive:Laboratorio 7/Tector 2"
+rclone mkdir "gdrive:Laboratorio 7/Tector 2/Detecciones"
 ```
 
 Subir los archivos de configuración iniciales:
 
 ```bash
-rclone copy ~/LSD-Tector2.0/config/config_horarios.txt "gdrive:LSD-Tector/"
-rclone copy ~/LSD-Tector2.0/config/config_general.txt "gdrive:LSD-Tector/"
+rclone copy ~/LSD-Tector2.0/config/config_horarios.txt "gdrive:Laboratorio 7/Tector 2/"
+rclone copy ~/LSD-Tector2.0/config/config_general.txt "gdrive:Laboratorio 7/Tector 2/"
 ```
 
 Verificar que los archivos fueron subidos correctamente:
 
 ```bash
-rclone ls "gdrive:LSD-Tector/"
+rclone ls "gdrive:Laboratorio 7/Tector 2/"
 ```
 
 La salida debe listar los dos archivos de configuración.
 
-> **Nota:** la carpeta de Google Drive se define mediante `DRIVE_PATH` en `config_general.txt`. La subcarpeta `BirdNET_Detecciones` es fija.
+> **Nota:** la carpeta de Google Drive se define mediante `DRIVE_PATH` en `config_general.txt`. La subcarpeta `Detecciones` es fija, y las detecciones quedan ahí directamente organizadas en subcarpetas por fecha (heredadas de la estructura que ya usa BirdNET-Pi localmente).
 
 ---
 
@@ -353,3 +353,5 @@ A partir de este momento, el dispositivo opera de forma autónoma siguiendo el c
 Una vez el dispositivo está en operación en campo, los archivos `config_horarios.txt` y `config_general.txt` en la carpeta de Google Drive definida por `DRIVE_PATH` pueden editarse desde cualquier lugar para modificar la configuración del dispositivo. Los cambios se aplican en el siguiente ciclo, cuando el dispositivo descarga la versión actualizada de Drive al final de la ventana de grabación.
 
 El archivo `log_sistema.txt` se sube a Drive al final de cada ventana y permite monitorear el estado del dispositivo de forma remota: cantidad de detecciones registradas y eventuales cierres sin conectividad. El campo de batería en cada entrada figura como `N/A` hasta que el INA219 esté instalado — ver la nota al principio de este README.
+
+Junto con `log_sistema.txt` también se sube `log_reciente.txt`, con el mismo contenido pero filtrado a solo los últimos 2 días — pensado para revisar la actividad reciente sin tener que scrollear todo el historial completo.
