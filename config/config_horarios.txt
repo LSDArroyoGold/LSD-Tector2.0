@@ -6,8 +6,8 @@ AUTO_SYNC=ON
 # Tocar sólo si AUTO_SYNC está en ON
 
 ## Offsets en minutos. Negativo para arrancar ventana antes del horario calculado, positivo después
-OFFSET_AMANECER_SYNC=20
-OFFSET_ATARDECER_SYNC=20
+OFFSET_AMANECER_SYNC=0
+OFFSET_ATARDECER_SYNC=0
 
 ## Duración de las ventanas en horas. Acepta decimales
 DURACION_AMANECER_SYNC=2
