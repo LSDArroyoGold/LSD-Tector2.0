@@ -15,6 +15,6 @@ DRIVE_PATH=$(awk -F'=' '/^DRIVE_PATH=/{print $2}' "$CONFIG_GENERAL" | tr -d '\r'
 HOY=$(date +%Y-%m-%d)
 AYER=$(date -d "yesterday" +%Y-%m-%d)
 
-grep -E "^\[($HOY|$AYER)" "$BASE_PATH/log_sistema.txt" > "$BASE_PATH/log_reciente.txt"
+grep -aE "^\[($HOY|$AYER)" "$BASE_PATH/log_sistema.txt" > "$BASE_PATH/log_reciente.txt"
 
 rclone copy "$BASE_PATH/log_reciente.txt" "gdrive:$DRIVE_PATH/"
