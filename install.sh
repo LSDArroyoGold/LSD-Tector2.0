@@ -33,7 +33,15 @@ echo ""
 echo "==> Paquetes del sistema (dnsmasq, util-linux-extra)"
 sudo apt-get update -qq
 sudo apt-get install -y -qq dnsmasq util-linux-extra
-sudo systemctl enable --now dnsmasq
+
+# NO habilitar dnsmasq como servicio systemd: hotspot.sh lo mata a mano
+# (pkill dnsmasq) antes de levantar el AP, y NetworkManager lanza su propia
+# instancia privada al activar la conexion Hotspot (ipv4.method shared).
+# Un dnsmasq systemd corriendo de forma standalone escucha DHCP/DNS en todas
+# las interfaces por default, incluida wlan0 mientras esta conectada como
+# cliente normal -- eso corto la conexion de wlan0 la primera vez que se
+# corrio este instalador. Solo hace falta el paquete instalado.
+sudo systemctl disable --now dnsmasq 2>/dev/null || true
 echo "    hwclock disponible en: $(which hwclock || echo '/usr/sbin/hwclock')"
 
 # --- 2. I2C, para el DS3231 ---
