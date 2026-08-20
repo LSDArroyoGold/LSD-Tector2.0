@@ -18,12 +18,13 @@ Este software fue desarrollado y probado sobre una **Raspberry Pi 4 Model B (2GB
 ## Dependencias
 
 - Raspberry Pi OS Lite 64-bit (Bookworm)
-- BirdNET-Pi (ver paso 2; salteable si por ahora solo se quiere probar el software propio del LSD-Tector)
+- BirdNET-Pi (ver paso 9; salteable si por ahora solo se quiere probar el software propio del LSD-Tector)
+- [LSDTector-BirdNET-retrain-bsas](https://github.com/LSDArroyoGold/LSDTector-BirdNET-retrain-bsas) (clasificador reentrenado, opcional — ver paso 9.5)
 - Python 3 (incluido en Raspberry Pi OS)
 - rclone
-- astral (librería Python)
+- astral (librería Python) — instalada automáticamente por `install.sh`
 - nmcli (incluido en Raspberry Pi OS)
-- dnsmasq y util-linux-extra
+- dnsmasq y util-linux-extra — instalados automáticamente por `install.sh`
 - DS3231 (RTC externo, soportado nativamente por el kernel de Linux — no requiere ninguna librería propia)
 
 ### 1. Sistema operativo
@@ -38,127 +39,7 @@ Instalar **Raspberry Pi OS Lite 64-bit (Bookworm)** en la microSD usando [Raspbe
 
 Una vez flasheada la microSD, insertarla en la Raspberry Pi y encenderla.
 
-### 2. BirdNET-Pi
-
-BirdNET-Pi es el motor de grabación, análisis y extracción de detecciones: LSD-Tector no reimplementa nada de eso, se apoya en su pipeline (`birdnet_recording.service` + `birdnet_analysis.service`) y en su convención de carpetas (`BirdSongs/Extracted/By_Date/`), de la que dependen directamente `cierre_amanecer.sh` y `cierre_atardecer.sh` para subir las detecciones a Drive. También se usa su integración nativa con BirdWeather.
-
-> [!NOTE]
-> Si el objetivo inmediato es solo poner en marcha la Raspberry con el software propio del LSD-Tector (WiFi, portal de configuración, sincronización con Drive, RTC) y dejar BirdNET-Pi para después, este paso puede saltearse: nada del resto de la instalación depende de que esté presente. Los scripts nuevos de este repositorio (`actualizar_modelo.sh`, el chequeo de salud en los `cierre_*.sh`) detectan que no está instalado y no hacen nada.
-
-Desde la terminal de la RP, ejecutar:
-
-```bash
-curl -s https://raw.githubusercontent.com/Nachtzuster/BirdNET-Pi/main/newinstaller.sh | bash
-```
-
-La instalación tarda varios minutos. Una vez finalizada, BirdNET-Pi queda corriendo automáticamente y es accesible desde cualquier dispositivo en la misma red ingresando `http://[IP_de_la_RP]` en el navegador (antes de correr el paso 2.5, que apaga esa interfaz web para ahorrar batería). Para obtener la IP de la Raspberry Pi, ejecutar desde su terminal:
-
-```bash
-hostname -I
-```
-
-El primer valor que devuelve es la IP local del dispositivo.
-
-### 2.5. Configurar BirdNET-Pi para uso desatendido, y cargar el modelo reentrenado
-
-> [!NOTE]
-> Este paso necesita el repositorio de LSD-Tector 2.0 ya clonado (paso 7 más abajo), porque el script vive ahí. Se puede hacer el paso 7 primero y volver acá, o saltear este paso por ahora y volver más adelante.
-
-BirdNET-Pi instala por defecto un conjunto de servicios pensados para cuando alguien mira el dashboard desde el navegador en la misma red (streaming de audio en vivo, visor de espectrograma, gráficos, terminal web, panel de estadísticas). En un dispositivo desatendido en el campo no hay nadie mirando esos servicios, y miden un consumo real: apagarlos midió una reducción de **~19% en el consumo instantáneo** en pruebas de campo de la v1.1, sin afectar la grabación, el análisis ni la subida a BirdWeather, que no dependen de ninguno de ellos.
-
-El script `configurar_birdnet.sh` hace esto de forma automática (apagar y enmascarar los servicios de dashboard/streaming, arrancar en modo consola, configurar la gestión de disco, y dejar `CONFIDENCE`/`SENSITIVITY` en los valores de partida para monitoreo continuo), y de paso pide el token de BirdWeather:
-
-```bash
-cd ~/LSD-Tector2.0
-./scripts/configurar_birdnet.sh
-```
-
-Correrlo una sola vez, después de instalar BirdNET-Pi. El token de BirdWeather queda guardado en `birdnet.conf` (fuera de este repositorio, nunca se sube a GitHub).
-
-> [!NOTE]
-> El modelo reentrenado (las 193 especies locales, además del catálogo global de BirdNET sin modificar) se instala aparte, automáticamente, mediante `actualizar_modelo.sh`: se corre solo en cada ventana de grabación (junto con `actualizar_repo.sh`) y actualiza el `.tflite` cada vez que hay una versión nueva en [`LSDTector-BirdNET-retrain-bsas`](https://github.com/LSDArroyoGold/LSDTector-BirdNET-retrain-bsas), sin necesidad de reinstalar nada a mano.
-
-### 3. Paquetes del sistema
-
-```bash
-sudo apt update
-sudo apt install -y dnsmasq util-linux-extra
-sudo systemctl enable dnsmasq
-sudo systemctl start dnsmasq
-```
-
-Verificar que `hwclock` quedó disponible:
-
-```bash
-which hwclock
-```
-
-Debe devolver `/usr/sbin/hwclock`.
-
-### 4. Habilitar I2C
-
-El DS3231 se comunica con la Raspberry Pi mediante el protocolo I2C. Para habilitarlo:
-
-```bash
-sudo raspi-config
-```
-
-Navegar a **Interface Options → I2C → Enable**. Confirmar y salir. Luego reiniciar:
-
-```bash
-sudo reboot
-```
-
-### 5. Dependencias Python
-
-```bash
-pip install astral --break-system-packages
-```
-
-### 6. Configurar el DS3231
-
-A diferencia de la PiJuice (que exponía su RTC mediante una API Python propia), el DS3231 es un chip estándar que el kernel de Linux sabe manejar directamente: una vez configurado, se comporta como cualquier reloj de hardware y se opera con `hwclock`, sin ninguna librería adicional.
-
-Agregar el overlay correspondiente al archivo de configuración de arranque:
-
-```bash
-sudo nano /boot/firmware/config.txt
-```
-
-Agregar al final del archivo:
-
-```
-dtoverlay=i2c-rtc,ds3231
-```
-
-Guardar y reiniciar:
-
-```bash
-sudo reboot
-```
-
-Verificar que el DS3231 aparece como dispositivo RTC del sistema:
-
-```bash
-ls /dev/rtc*
-```
-
-Debe listar `/dev/rtc0` (o `/dev/rtc1` si ya hay otro RTC registrado). Verificar que `hwclock` puede leerlo:
-
-```bash
-sudo hwclock -r
-```
-
-Debe devolver la hora actual del DS3231 sin errores. Si el reloj está muy desfasado (por ejemplo, si el módulo es nuevo y nunca se sincronizó), escribirle la hora del sistema una vez de forma manual:
-
-```bash
-sudo hwclock -w
-```
-
-> [!NOTE]
-> La alarma del DS3231 (usada para despertar la Raspberry desde apagado) todavía no se programa desde ningún script — ver la nota `PENDIENTE` al principio de este README y en `python/set_wake_rtc.py`.
-
-### 7. Clonar el repositorio
+### 2. Clonar el repositorio
 
 Clonar este repositorio en la Raspberry Pi, en la ubicación deseada (por ejemplo, el directorio home del usuario):
 
@@ -169,9 +50,72 @@ git clone https://github.com/LSDArroyoGold/LSD-Tector2.0.git
 
 Los scripts se ejecutan directamente desde el repositorio, respetando su estructura de carpetas (`scripts/`, `python/`, `config/`, `systemd/`). No es necesario copiar ni mover archivos.
 
-El instalador `install.sh` se ejecuta más adelante (paso 10), una vez configurados rclone y los archivos de configuración. El instalador se encarga de dar permisos de ejecución a los scripts, instalar y habilitar los servicios de systemd, y configurar el crontab, autodetectando la ubicación del repositorio.
+### 3. sudo sin contraseña
 
-### 8. rclone
+> [!IMPORTANT]
+> Este paso no es opcional. Todo el sistema depende de que `cron` pueda ejecutar `sudo` (nmcli, systemctl, etc. en `inicio_*.sh`, `cierre_*.sh`, `hotspot.sh`) sin que haya nadie conectado para tipear una contraseña — el dispositivo corre desatendido en campo. También lo exige el instalador oficial de BirdNET-Pi (paso 9), que aborta si no lo detecta.
+
+```bash
+echo "$(whoami) ALL=(ALL) NOPASSWD: ALL" | sudo EDITOR="tee" visudo -f /etc/sudoers.d/010-lsd-nopasswd
+sudo chmod 440 /etc/sudoers.d/010-lsd-nopasswd
+sudo visudo -c
+```
+
+La tercera línea valida la sintaxis del archivo nuevo antes de confiar en él (evita dejar `sudo` roto por un error de tipeo). Verificar que funcionó:
+
+```bash
+sudo -n true && echo OK
+```
+
+### 4. Ejecutar el instalador
+
+El script `install.sh` deja el sistema listo en una sola corrida: paquetes del sistema (`dnsmasq`, `util-linux-extra`), habilita I2C, agrega el overlay del DS3231, instala `astral`, da permisos de ejecución a los scripts, instala y habilita los servicios de systemd (`hotspot.service` y `sync-rtc.service`), y configura el crontab con las cinco tareas periódicas. Autodetecta la ubicación del repositorio y el usuario del sistema.
+
+Ejecutarlo desde la raíz del repositorio, sin `sudo` (el script pide permisos de administrador solo donde los necesita):
+
+```bash
+cd ~/LSD-Tector2.0
+./install.sh
+```
+
+Verificar que la instalación fue exitosa:
+
+```bash
+sudo systemctl status hotspot.service
+sudo systemctl status sync-rtc.service
+crontab -l
+```
+
+Los servicios deben aparecer habilitados y el crontab debe listar las cinco tareas. Al final, el script avisa si hace falta reiniciar — la primera vez que se corre, sí (para activar el overlay del DS3231 recién agregado).
+
+### 5. Reiniciar y verificar el DS3231
+
+```bash
+sudo reboot
+```
+
+Después de reconectarse por SSH, verificar que el DS3231 quedó reconocido como reloj de hardware:
+
+```bash
+ls /dev/rtc*
+sudo hwclock -r
+```
+
+Debe listar `/dev/rtc0` (o `/dev/rtc1` si ya hay otro RTC registrado) y devolver la hora actual sin errores.
+
+> [!NOTE]
+> Si `/dev/rtc*` no aparece, lo más probable es que el módulo DS3231 no esté bien conectado físicamente (SDA/SCL/VCC/GND) — no suele ser un problema de configuración. `dmesg | grep rtc` mostrando `probe ... failed with error -5` confirma que el software está buscando el chip correctamente pero nadie responde en el bus I2C.
+
+Si el reloj está muy desfasado (por ejemplo, si el módulo es nuevo y nunca se sincronizó), escribirle la hora del sistema una vez de forma manual:
+
+```bash
+sudo hwclock -w
+```
+
+> [!NOTE]
+> La alarma del DS3231 (usada para despertar la Raspberry desde apagado) todavía no se programa desde ningún script — ver la nota `PENDIENTE` al principio de este README y en `python/set_wake_rtc.py`.
+
+### 6. rclone
 
 Instalar rclone:
 
@@ -235,7 +179,7 @@ rclone lsd gdrive:
 
 Si el comando devuelve la lista de carpetas existentes en la cuenta de Google, la configuración fue exitosa.
 
-### 9. Archivos de configuración
+### 7. Archivos de configuración
 
 Los archivos `config_general.txt` y `config_horarios.txt` se encuentran en la carpeta `config/` del repositorio. Editarlos según las necesidades del dispositivo.
 
@@ -250,7 +194,7 @@ El archivo contiene los siguientes parámetros:
 | Parámetro | Descripción |
 |---|---|
 | `DRIVE_PATH` | Ruta de la carpeta en Google Drive donde se sincronizan datos y configuración. Puede ser una carpeta en la raíz (ej: `LSD-Tector`) o anidada (ej: `Proyectos/LSD/Tector`). |
-| `FIRST_START` | Mantener en `TRUE` para activar el modo hotspot en el primer arranque. Una vez configurada la red WiFi exitosamente, el sistema lo cambia automáticamente a `FALSE`. |
+| `FIRST_START` | Mantener en `TRUE` para activar el modo hotspot en el primer arranque. Una vez configurada la red WiFi exitosamente, el sistema lo cambia automáticamente a `FALSE`. Si el WiFi ya se configuró a mano (por ejemplo por SSH directo), poner en `FALSE` para no disparar el portal de configuración en el próximo arranque. |
 | `HOTSPOT_SSID` | Nombre de la red WiFi de configuración que emite el dispositivo en el primer arranque. |
 | `HOTSPOT_PASSWORD` | Contraseña de esa red WiFi de configuración. |
 | `LAT` y `LON` | Coordenadas geográficas del lugar de instalación. Pueden dejarse con valores aproximados ya que se actualizan automáticamente mediante geolocalización por IP al utilizar el modo hotspot. |
@@ -286,30 +230,7 @@ cat ~/LSD-Tector2.0/config/config_horarios.txt
 
 Revisar que todos los valores fueron completados correctamente y que se respeta el formato `CLAVE=valor` sin espacios.
 
-### 10. Ejecutar el instalador
-
-El script `install.sh` configura el sistema de forma automática: da permisos de ejecución a los scripts, instala y habilita los servicios de systemd (`sync-rtc.service` y `hotspot.service`), y configura el crontab con las tareas periódicas. Autodetecta la ubicación del repositorio y el usuario del sistema.
-
-Ejecutarlo desde la raíz del repositorio, sin `sudo` (el script pide permisos de administrador solo donde los necesita):
-
-```bash
-cd ~/LSD-Tector2.0
-./install.sh
-```
-
-El `sync-rtc.service` copia la hora del DS3231 al reloj del sistema en cada arranque (`hwclock --hctosys`), imprescindible para que las ventanas disparen a la hora correcta tras un arranque sin conexión. El `hotspot.service` activa el modo hotspot en el primer arranque cuando `FIRST_START=TRUE`. Las cinco tareas del crontab (los cuatro scripts de ventana y la rutina del botón) se ejecutan cada minuto y verifican internamente si corresponde disparar su rutina.
-
-Verificar que la instalación fue exitosa:
-
-```bash
-sudo systemctl status hotspot.service
-sudo systemctl status sync-rtc.service
-crontab -l
-```
-
-Los servicios deben aparecer habilitados y el crontab debe listar las cinco tareas.
-
-### 11. Crear carpetas en Google Drive y subir archivos de configuración
+### 8. Crear carpetas en Google Drive y subir archivos de configuración
 
 Crear las carpetas que utilizará el sistema en Google Drive, usando la ruta definida en `DRIVE_PATH` (en los ejemplos siguientes se asume `DRIVE_PATH=Laboratorio 7/Tector 2`, el valor real usado por este dispositivo):
 
@@ -335,6 +256,48 @@ La salida debe listar los dos archivos de configuración.
 
 > **Nota:** la carpeta de Google Drive se define mediante `DRIVE_PATH` en `config_general.txt`. La subcarpeta `Detecciones` es fija, y las detecciones quedan ahí directamente organizadas en subcarpetas por fecha (heredadas de la estructura que ya usa BirdNET-Pi localmente).
 
+Con esto, el software propio del LSD-Tector (WiFi, portal de configuración, sincronización con Drive, RTC) ya está completamente operativo. Los dos pasos que siguen son sobre BirdNET-Pi, opcionales para llegar a este punto.
+
+### 9. BirdNET-Pi
+
+BirdNET-Pi es el motor de grabación, análisis y extracción de detecciones: LSD-Tector no reimplementa nada de eso, se apoya en su pipeline (`birdnet_recording.service` + `birdnet_analysis.service`) y en su convención de carpetas (`BirdSongs/Extracted/By_Date/`), de la que dependen directamente `cierre_amanecer.sh` y `cierre_atardecer.sh` para subir las detecciones a Drive. También se usa su integración nativa con BirdWeather.
+
+> [!NOTE]
+> Si el objetivo inmediato es solo poner en marcha la Raspberry con el software propio del LSD-Tector y dejar BirdNET-Pi para después, este paso puede saltearse: nada de los pasos anteriores depende de que esté presente. Los scripts nuevos de este repositorio (`actualizar_modelo.sh`, el chequeo de salud en los `cierre_*.sh`) detectan que no está instalado y no hacen nada.
+
+Desde la terminal de la RP, ejecutar:
+
+```bash
+curl -s https://raw.githubusercontent.com/Nachtzuster/BirdNET-Pi/main/newinstaller.sh | bash
+```
+
+La instalación tarda varios minutos (y necesita `sudo` sin contraseña — ver paso 3). Una vez finalizada, BirdNET-Pi queda corriendo automáticamente y es accesible desde cualquier dispositivo en la misma red ingresando `http://[IP_de_la_RP]` en el navegador (antes de correr el paso 9.5, que apaga esa interfaz web para ahorrar batería). Para obtener la IP de la Raspberry Pi, ejecutar desde su terminal:
+
+```bash
+hostname -I
+```
+
+El primer valor que devuelve es la IP local del dispositivo.
+
+### 9.5. Configurar BirdNET-Pi para uso desatendido, y cargar el modelo reentrenado
+
+BirdNET-Pi instala por defecto un conjunto de servicios pensados para cuando alguien mira el dashboard desde el navegador en la misma red (streaming de audio en vivo, visor de espectrograma, gráficos, terminal web, panel de estadísticas). En un dispositivo desatendido en el campo no hay nadie mirando esos servicios, y miden un consumo real: apagarlos midió una reducción de **~19% en el consumo instantáneo** en pruebas de campo de la v1.1, sin afectar la grabación, el análisis ni la subida a BirdWeather, que no dependen de ninguno de ellos.
+
+El script `configurar_birdnet.sh` hace esto de forma automática (apagar y enmascarar los servicios de dashboard/streaming, arrancar en modo consola, configurar la gestión de disco, y dejar `CONFIDENCE`/`SENSITIVITY` en los valores de partida para monitoreo continuo), y de paso pide el token de BirdWeather:
+
+```bash
+cd ~/LSD-Tector2.0
+./scripts/configurar_birdnet.sh
+```
+
+Correrlo una sola vez, después de instalar BirdNET-Pi. El token de BirdWeather queda guardado en `birdnet.conf` (fuera de este repositorio, nunca se sube a GitHub).
+
+> [!NOTE]
+> El modelo reentrenado (las 193 especies locales, además del catálogo global de BirdNET sin modificar) se instala aparte, automáticamente, mediante `actualizar_modelo.sh`: se corre solo en cada ventana de grabación (junto con `actualizar_repo.sh`) y actualiza el `.tflite` cada vez que hay una versión nueva en [`LSDTector-BirdNET-retrain-bsas`](https://github.com/LSDArroyoGold/LSDTector-BirdNET-retrain-bsas), sin necesidad de reinstalar nada a mano. Para forzarlo de inmediato en vez de esperar a la próxima ventana: `bash ~/LSD-Tector2.0/scripts/actualizar_modelo.sh`.
+
+> [!NOTE]
+> `LATITUDE`/`LONGITUDE` en `birdnet.conf` (usadas por BirdNET-Pi para su filtro de especies plausibles por región y época) se sincronizan automáticamente con `LAT`/`LON` de `config_general.txt` cuando corre `hotspot.sh` — es decir, recién en el primer arranque con `FIRST_START=TRUE` (paso 7), o si el WiFi se configuró por ese camino. Si el WiFi se configuró a mano (SSH directo, sin pasar por el portal), `birdnet.conf` queda con las coordenadas por defecto del instalador de BirdNET-Pi hasta que se corrijan manualmente: `sudo nano ~/BirdNET-Pi/birdnet.conf`, buscar `LATITUDE`/`LONGITUDE`.
+
 ---
 
 ## Primer arranque en campo
@@ -347,13 +310,16 @@ Una vez completados todos los pasos de instalación, el dispositivo está listo 
 4. Abrir un navegador web y navegar a `http://192.168.4.1:5000`. Se mostrará el portal de configuración.
 5. Seleccionar de la lista la red WiFi a la que se conectará el dispositivo en campo. Ingresar la contraseña correspondiente. Presionar **Conectar**.
 6. El dispositivo se desconecta del modo hotspot e intenta conectarse a la red indicada. Si la conexión es exitosa:
-   - Las coordenadas geográficas se actualizan automáticamente mediante geolocalización por IP.
+   - Las coordenadas geográficas se actualizan automáticamente mediante geolocalización por IP (y se propagan a `birdnet.conf` si BirdNET-Pi está instalado).
    - Los horarios de amanecer y atardecer se calculan y se escriben en `config_horarios.txt`.
    - El parámetro `FIRST_START` se cambia a `FALSE`.
    - El dispositivo calcula el horario de la próxima ventana de grabación y **queda encendido** (todavía no hay circuito de corte de energía — ver la nota al principio de este README).
 7. Si la conexión falla, la red de configuración vuelve a aparecer automáticamente. Reconectarse y reintentar con las credenciales correctas.
 
 A partir de este momento, el dispositivo opera de forma autónoma siguiendo el ciclo programado de ventanas de grabación, permaneciendo encendido de forma continua entre ellas.
+
+> [!NOTE]
+> Si el WiFi ya se configuró a mano durante la instalación (por ejemplo, por SSH directo sin pasar por el portal), este procedimiento no hace falta: dejar `FIRST_START=FALSE` y el dispositivo arranca operando directamente, sin intentar levantar el hotspot.
 
 ---
 

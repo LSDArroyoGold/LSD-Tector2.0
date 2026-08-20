@@ -2,9 +2,13 @@
 #
 # install.sh - Instalador del LSD-Tector 2.0
 #
-# Configura crontab, servicios systemd y permisos, autodetectando la
-# ubicacion del repositorio. No instala BirdNET-Pi, rclone ni dependencias
-# del sistema: esos pasos son manuales y estan documentados en el README.
+# Deja el sistema completamente listo para operar: paquetes del sistema,
+# I2C, overlay del DS3231, dependencias de Python, permisos, servicios
+# systemd y crontab. Autodetecta la ubicacion del repositorio y el usuario.
+#
+# No instala BirdNET-Pi (instalador propio, opcional, ver README) ni
+# configura rclone (necesita autenticacion interactiva con Google, ver
+# README) -- eso queda aparte a proposito.
 #
 # Uso: ./install.sh   (NO con sudo; el script pide sudo donde lo necesita)
 
@@ -15,6 +19,7 @@ BASE_PATH="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
 SCRIPTS_DIR="$BASE_PATH/scripts"
 PYTHON_DIR="$BASE_PATH/python"
 SYSTEMD_DIR="$BASE_PATH/systemd"
+CONFIG_TXT="/boot/firmware/config.txt"
 
 # --- Deteccion del usuario real (aunque se corra con sudo por error) ---
 REAL_USER="${SUDO_USER:-$(whoami)}"
@@ -24,11 +29,37 @@ echo "    Repositorio detectado en: $BASE_PATH"
 echo "    Usuario: $REAL_USER"
 echo ""
 
-# --- 1. Permisos de ejecucion a los scripts ---
+# --- 1. Paquetes del sistema ---
+echo "==> Paquetes del sistema (dnsmasq, util-linux-extra)"
+sudo apt-get update -qq
+sudo apt-get install -y -qq dnsmasq util-linux-extra
+sudo systemctl enable --now dnsmasq
+echo "    hwclock disponible en: $(which hwclock || echo '/usr/sbin/hwclock')"
+
+# --- 2. I2C, para el DS3231 ---
+echo "==> Habilitando I2C"
+sudo raspi-config nonint do_i2c 0
+
+# --- 3. Overlay del DS3231 ---
+echo "==> Configurando overlay del DS3231 en $CONFIG_TXT"
+REBOOT_NECESARIO=0
+if grep -q "^dtoverlay=i2c-rtc,ds3231" "$CONFIG_TXT" 2>/dev/null; then
+	echo "    Ya estaba configurado."
+else
+	echo "dtoverlay=i2c-rtc,ds3231" | sudo tee -a "$CONFIG_TXT" > /dev/null
+	echo "    Agregado."
+	REBOOT_NECESARIO=1
+fi
+
+# --- 4. Dependencias de Python ---
+echo "==> Dependencias de Python (astral)"
+pip install astral --break-system-packages --quiet
+
+# --- 5. Permisos de ejecucion a los scripts ---
 echo "==> Dando permisos de ejecucion a los scripts .sh"
 chmod +x "$SCRIPTS_DIR"/*.sh
 
-# --- 2. Servicios systemd ---
+# --- 6. Servicios systemd ---
 echo "==> Instalando servicios systemd"
 
 # hotspot.service: reemplazar el placeholder __BASE_PATH__ por la ruta real
@@ -47,7 +78,7 @@ sudo systemctl enable sync-rtc.service
 
 echo "    Servicios hotspot.service y sync-rtc.service habilitados"
 
-# --- 3. Crontab del usuario ---
+# --- 7. Crontab del usuario ---
 echo "==> Configurando crontab para el usuario $REAL_USER"
 
 # Lineas del crontab, apuntando a las rutas reales del repo
@@ -70,3 +101,13 @@ echo ""
 echo "==> Instalacion completada."
 echo "    Verifica los servicios con: sudo systemctl status hotspot.service"
 echo "    Verifica el crontab con:    crontab -l"
+
+if [ "$REBOOT_NECESARIO" = "1" ]; then
+	echo ""
+	echo "    IMPORTANTE: el overlay del DS3231 se agrego recien. Reiniciar para"
+	echo "    que tome efecto:"
+	echo ""
+	echo "        sudo reboot"
+	echo ""
+	echo "    Despues del reinicio, verificar con: ls /dev/rtc*"
+fi
