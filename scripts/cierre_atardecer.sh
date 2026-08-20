@@ -55,6 +55,17 @@ if [ "$HORA_ACTUAL" = "$HORARIO" ]; then
 
 	python3 "$BASE_PATH/python/sync_rtc.py"
 
+	# Ver el comentario equivalente en cierre_amanecer.sh.
+	if systemctl list-unit-files birdnet_analysis.service &>/dev/null; then
+		SERVICIOS_CAIDOS=""
+		for SERVICIO in birdnet_recording.service birdnet_analysis.service; do
+			systemctl is-active --quiet "$SERVICIO" || SERVICIOS_CAIDOS="$SERVICIOS_CAIDOS $SERVICIO"
+		done
+		if [ -n "$SERVICIOS_CAIDOS" ]; then
+			python3 "$BASE_PATH/python/log_sistema.py" MSG "ALERTA: servicios de BirdNET-Pi caidos:$SERVICIOS_CAIDOS"
+		fi
+	fi
+
 	find "$USER_HOME/BirdSongs/Extracted/By_Date/" -name "*.png" -delete
 	rm -rf "$USER_HOME/BirdSongs/Extracted/Charts/"*
 

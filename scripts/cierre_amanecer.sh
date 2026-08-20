@@ -57,6 +57,22 @@ if [ "$HORA_ACTUAL" = "$HORARIO" ]; then
 
 	python3 "$BASE_PATH/python/sync_rtc.py"
 
+	# Si BirdNET-Pi esta instalado, confirmar que el pipeline de grabacion y
+	# analisis sigue vivo. systemd ya reinicia estos servicios solos si se
+	# caen (Restart=always), asi que esto no es para arreglarlos: es para
+	# que quede registrado en el log si algo no arranco o quedo en loop de
+	# reinicio, en vez de enterarse recien al volver al campo por la falta
+	# de detecciones.
+	if systemctl list-unit-files birdnet_analysis.service &>/dev/null; then
+		SERVICIOS_CAIDOS=""
+		for SERVICIO in birdnet_recording.service birdnet_analysis.service; do
+			systemctl is-active --quiet "$SERVICIO" || SERVICIOS_CAIDOS="$SERVICIOS_CAIDOS $SERVICIO"
+		done
+		if [ -n "$SERVICIOS_CAIDOS" ]; then
+			python3 "$BASE_PATH/python/log_sistema.py" MSG "ALERTA: servicios de BirdNET-Pi caidos:$SERVICIOS_CAIDOS"
+		fi
+	fi
+
 	find "$USER_HOME/BirdSongs/Extracted/By_Date/" -name "*.png" -delete
 	rm -rf "$USER_HOME/BirdSongs/Extracted/Charts/"*
 

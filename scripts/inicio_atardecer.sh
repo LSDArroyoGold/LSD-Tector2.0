@@ -44,6 +44,7 @@ if [ "$HORA_ACTUAL" = "$HORARIO_DELAY" ]; then
 	bash "$BASE_PATH/scripts/generar_log_reciente.sh"
 
 	bash "$BASE_PATH/scripts/actualizar_repo.sh"
+	bash "$BASE_PATH/scripts/actualizar_modelo.sh"
 
 	sudo nmcli radio wifi off
 	sudo chown "$REAL_USER:$REAL_USER" "$USER_HOME/.config/rclone/rclone.conf"

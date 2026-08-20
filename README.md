@@ -18,7 +18,7 @@ Este software fue desarrollado y probado sobre una **Raspberry Pi 4 Model B (2GB
 ## Dependencias
 
 - Raspberry Pi OS Lite 64-bit (Bookworm)
-- BirdNET-Pi (opcional por ahora — ver paso 2)
+- BirdNET-Pi (ver paso 2; salteable si por ahora solo se quiere probar el software propio del LSD-Tector)
 - Python 3 (incluido en Raspberry Pi OS)
 - rclone
 - astral (librería Python)
@@ -38,10 +38,12 @@ Instalar **Raspberry Pi OS Lite 64-bit (Bookworm)** en la microSD usando [Raspbe
 
 Una vez flasheada la microSD, insertarla en la Raspberry Pi y encenderla.
 
-### 2. BirdNET-Pi (opcional por ahora)
+### 2. BirdNET-Pi
+
+BirdNET-Pi es el motor de grabación, análisis y extracción de detecciones: LSD-Tector no reimplementa nada de eso, se apoya en su pipeline (`birdnet_recording.service` + `birdnet_analysis.service`) y en su convención de carpetas (`BirdSongs/Extracted/By_Date/`), de la que dependen directamente `cierre_amanecer.sh` y `cierre_atardecer.sh` para subir las detecciones a Drive. También se usa su integración nativa con BirdWeather.
 
 > [!NOTE]
-> Hay una versión reentrenada de BirdNET en desarrollo en paralelo. Si el objetivo inmediato es solo poner en marcha la Raspberry con el software del LSD-Tector (WiFi, portal de configuración, sincronización con Drive, RTC), este paso puede saltearse por completo y hacerse más adelante — nada del resto de la instalación depende de que BirdNET-Pi esté instalado. Si se instala ahora, tenerlo en cuenta como una instalación temporal a reemplazar cuando el modelo reentrenado esté listo.
+> Si el objetivo inmediato es solo poner en marcha la Raspberry con el software propio del LSD-Tector (WiFi, portal de configuración, sincronización con Drive, RTC) y dejar BirdNET-Pi para después, este paso puede saltearse: nada del resto de la instalación depende de que esté presente. Los scripts nuevos de este repositorio (`actualizar_modelo.sh`, el chequeo de salud en los `cierre_*.sh`) detectan que no está instalado y no hacen nada.
 
 Desde la terminal de la RP, ejecutar:
 
@@ -49,7 +51,7 @@ Desde la terminal de la RP, ejecutar:
 curl -s https://raw.githubusercontent.com/Nachtzuster/BirdNET-Pi/main/newinstaller.sh | bash
 ```
 
-La instalación tarda varios minutos. Una vez finalizada, BirdNET-Pi queda corriendo automáticamente y es accesible desde cualquier dispositivo en la misma red ingresando `http://[IP_de_la_RP]` en el navegador. Para obtener la IP de la Raspberry Pi, ejecutar desde su terminal:
+La instalación tarda varios minutos. Una vez finalizada, BirdNET-Pi queda corriendo automáticamente y es accesible desde cualquier dispositivo en la misma red ingresando `http://[IP_de_la_RP]` en el navegador (antes de correr el paso 2.5, que apaga esa interfaz web para ahorrar batería). Para obtener la IP de la Raspberry Pi, ejecutar desde su terminal:
 
 ```bash
 hostname -I
@@ -57,17 +59,24 @@ hostname -I
 
 El primer valor que devuelve es la IP local del dispositivo.
 
-Una vez instalado, configurar la gestión de disco para evitar que la tarjeta microSD se llene con el tiempo:
+### 2.5. Configurar BirdNET-Pi para uso desatendido, y cargar el modelo reentrenado
+
+> [!NOTE]
+> Este paso necesita el repositorio de LSD-Tector 2.0 ya clonado (paso 7 más abajo), porque el script vive ahí. Se puede hacer el paso 7 primero y volver acá, o saltear este paso por ahora y volver más adelante.
+
+BirdNET-Pi instala por defecto un conjunto de servicios pensados para cuando alguien mira el dashboard desde el navegador en la misma red (streaming de audio en vivo, visor de espectrograma, gráficos, terminal web, panel de estadísticas). En un dispositivo desatendido en el campo no hay nadie mirando esos servicios, y miden un consumo real: apagarlos midió una reducción de **~19% en el consumo instantáneo** en pruebas de campo de la v1.1, sin afectar la grabación, el análisis ni la subida a BirdWeather, que no dependen de ninguno de ellos.
+
+El script `configurar_birdnet.sh` hace esto de forma automática (apagar y enmascarar los servicios de dashboard/streaming, arrancar en modo consola, configurar la gestión de disco, y dejar `CONFIDENCE`/`SENSITIVITY` en los valores de partida para monitoreo continuo), y de paso pide el token de BirdWeather:
+
 ```bash
-sudo nano /etc/birdnet/birdnet.conf
+cd ~/LSD-Tector2.0
+./scripts/configurar_birdnet.sh
 ```
-Buscar los parámetros `FULL_DISK` y `PURGE_THRESHOLD` y establecerlos así:
-```
-FULL_DISK=purge
-PURGE_THRESHOLD=75
-```
-Con esta configuración, cuando el disco supere el 75% de ocupación, BirdNET-Pi eliminará automáticamente las grabaciones del día más antiguo para liberar espacio.
-Guardar con Ctrl+O y salir con Ctrl+X.
+
+Correrlo una sola vez, después de instalar BirdNET-Pi. El token de BirdWeather queda guardado en `birdnet.conf` (fuera de este repositorio, nunca se sube a GitHub).
+
+> [!NOTE]
+> El modelo reentrenado (las 193 especies locales, además del catálogo global de BirdNET sin modificar) se instala aparte, automáticamente, mediante `actualizar_modelo.sh`: se corre solo en cada ventana de grabación (junto con `actualizar_repo.sh`) y actualiza el `.tflite` cada vez que hay una versión nueva en [`LSDTector-BirdNET-retrain-bsas`](https://github.com/LSDArroyoGold/LSDTector-BirdNET-retrain-bsas), sin necesidad de reinstalar nada a mano.
 
 ### 3. Paquetes del sistema
 
@@ -353,5 +362,7 @@ A partir de este momento, el dispositivo opera de forma autónoma siguiendo el c
 Una vez el dispositivo está en operación en campo, los archivos `config_horarios.txt` y `config_general.txt` en la carpeta de Google Drive definida por `DRIVE_PATH` pueden editarse desde cualquier lugar para modificar la configuración del dispositivo. Los cambios se aplican en el siguiente ciclo, cuando el dispositivo descarga la versión actualizada de Drive al final de la ventana de grabación.
 
 El archivo `log_sistema.txt` se sube a Drive al final de cada ventana y permite monitorear el estado del dispositivo de forma remota: cantidad de detecciones registradas y eventuales cierres sin conectividad. El campo de batería en cada entrada figura como `N/A` hasta que el INA219 esté instalado — ver la nota al principio de este README.
+
+Si BirdNET-Pi está instalado, cada cierre de ventana también chequea que `birdnet_recording.service` y `birdnet_analysis.service` sigan activos, y deja una línea `ALERTA: servicios de BirdNET-Pi caidos: ...` en el log si alguno se cayó. systemd ya los reinicia solo (`Restart=always`), así que esta alerta no es para arreglarlos: es para enterarse por Drive de un problema persistente sin tener que esperar a volver al campo y notar la falta de detecciones.
 
 Junto con `log_sistema.txt` también se sube `log_reciente.txt`, con el mismo contenido pero filtrado a solo los últimos 2 días — pensado para revisar la actividad reciente sin tener que scrollear todo el historial completo.

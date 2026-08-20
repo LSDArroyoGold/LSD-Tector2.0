@@ -118,6 +118,17 @@ LON=$(echo $UBICACION | python3 -c "import sys,json; coords=json.load(sys.stdin)
 sed -i "s/LAT=.*/LAT=$LAT/" "$CONFIG_PATH"
 sed -i "s/LON=.*/LON=$LON/" "$CONFIG_PATH"
 
+# Si BirdNET-Pi esta instalado, propagarle las mismas coordenadas: las usa
+# su modelo de metadata geografica (LATITUDE/LONGITUDE) para priorizar
+# especies plausibles para la region y la epoca del año, algo que refuerza
+# justo lo que busca el modelo reentrenado. Son claves separadas de
+# LAT/LON de este archivo, no la misma variable.
+BIRDNET_CONF="$USER_HOME/BirdNET-Pi/birdnet.conf"
+if [ -f "$BIRDNET_CONF" ]; then
+	sudo sed -i "s/^LATITUDE=.*/LATITUDE=$LAT/" "$BIRDNET_CONF"
+	sudo sed -i "s/^LONGITUDE=.*/LONGITUDE=$LON/" "$BIRDNET_CONF"
+fi
+
 # Marcar FIRST_START = FALSE
 sed -i 's/FIRST_START=TRUE/FIRST_START=FALSE/' "$CONFIG_PATH"
 
