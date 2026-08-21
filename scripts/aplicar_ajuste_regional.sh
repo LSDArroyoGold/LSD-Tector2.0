@@ -17,11 +17,17 @@
 # dispositivo, a proposito, para no atar el producto a los terminos de
 # uso de esa API (ver README de LSDTector-BirdNET-retrain-bsas).
 #
-# Corre DESPUES de actualizar_modelo.sh (necesita que el modelo universal
-# ya este instalado) y es enteramente opcional y silencioso: si todavia
-# no existe un archivo de frecuencias para la region del dispositivo, o
-# falta el entorno ~/birdnet-v2-env, no hace nada y el dispositivo sigue
-# con el modelo universal sin ajustar -- ni error ni bloqueo.
+# Se llama desde dos lugares, para cubrir tanto "recien nos enteramos de
+# donde estamos" como "el modelo base cambio":
+#   - hotspot.sh, justo despues de fijar LAT/LON (primera conexion WiFi,
+#     o cualquier reconfiguracion que pase por el portal).
+#   - inicio_amanecer.sh / inicio_atardecer.sh, despues de
+#     actualizar_modelo.sh (necesita que el modelo universal ya este
+#     instalado).
+# Es enteramente opcional y silencioso: si todavia no existe un archivo
+# de frecuencias para la region del dispositivo, o falta el entorno
+# ~/birdnet-v2-env, no hace nada y el dispositivo sigue con el modelo
+# universal sin ajustar -- ni error ni bloqueo.
 #
 # Requisitos para que se active (se chequean en orden, si falta alguno se
 # sale sin tocar nada):

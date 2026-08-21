@@ -140,6 +140,8 @@ fi
 # Marcar FIRST_START = FALSE
 sed -i 's/FIRST_START=TRUE/FIRST_START=FALSE/' "$CONFIG_PATH"
 
+bash "$BASE_PATH/scripts/aplicar_ajuste_regional.sh"
+
 bash "$BASE_PATH/scripts/auto_sync_horarios.sh"
 rclone copy "$CONFIG_HORARIOS" "gdrive:$DRIVE_PATH/"
 

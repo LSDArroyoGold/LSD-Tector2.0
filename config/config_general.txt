@@ -59,4 +59,4 @@ LON=-58.3772
 # ajustar, sin error. Ver advertencia sobre uso comercial de la API de
 # eBird en el propio script antes de usar esto en un dispositivo que se
 # vaya a vender.
-EBIRD_API_KEY=
+EBIRD_API_KEY=eb07b606-caf6-44a4-92f4-b0b869c4770a
