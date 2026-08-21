@@ -25,6 +25,19 @@ log() {
 
 FIRST_START=$(awk -F'=' '/FIRST_START/{print $2}' "$CONFIG_PATH" | tr -d '\r')
 
+# Siempre desbloquear el radio WiFi al arrancar, sin importar FIRST_START.
+# cierre_amanecer.sh/cierre_atardecer.sh apagan el radio con
+# `nmcli radio wifi off` al final de cada ventana para ahorrar batería, y
+# ese estado queda persistido por systemd-rfkill entre reinicios. Si el
+# equipo se reinicia (crash, corte de luz, lo que sea) mientras el radio
+# estaba apagado, sin esto arranca sordo y se queda asi indefinidamente,
+# porque el resto de este script no corre salvo que FIRST_START=TRUE o se
+# apriete el boton.
+sudo rfkill unblock wifi
+sleep 2
+sudo nmcli radio wifi on
+sleep 2
+
 sleep 15
 
 # Chequear si fue activado por botón
@@ -60,11 +73,6 @@ fi
 if [ "$FIRST_START" != "TRUE" ]; then
 	exit 0
 fi
-
-sudo rfkill unblock wifi
-sleep 2
-sudo nmcli radio wifi on
-sleep 2
 
 levantar_hotspot() {
 	sudo ip addr flush dev wlan0
