@@ -64,6 +64,12 @@ if [ -z "$LAT" ] || [ -z "$LON" ]; then
 	exit 0  # Todavia sin geolocalizar (antes del primer arranque exitoso).
 fi
 
+# Opcional: solo se usa como respaldo si no hay archivo de bar chart
+# todavia para esta region (ver advertencia de uso comercial en
+# generar_modelo_regional.py). Si esta vacio, el ajuste regional sigue
+# funcionando igual siempre que exista el archivo de la region.
+EBIRD_API_KEY=$(awk -F'=' '/^EBIRD_API_KEY=/{print $2}' "$CONFIG_PATH" | tr -d '\r')
+
 if [ ! -x "$VENV_PYTHON" ]; then
 	exit 0  # Falta el entorno de LSDTector-BirdNET-retrain-bsas/instalar.sh. Feature opcional, sin avisar cada vez.
 fi
@@ -102,10 +108,16 @@ fi
 # archivo de frecuencias correspondiente via raw.githubusercontent.com
 # (parametro --frecuencias-base-url) -- asi no hace falta bajar a mano
 # los ~200 archivos de region posibles, solo el que corresponda.
+ARGS_EBIRD_KEY=()
+if [ -n "$EBIRD_API_KEY" ]; then
+	ARGS_EBIRD_KEY=(--ebird-key "$EBIRD_API_KEY")
+fi
+
 if ! "$VENV_PYTHON" "$TMP/generar_modelo_regional.py" \
 	--lat "$LAT" --lon "$LON" \
 	--pesos "$TMP/modelo/pesos_193_locales.npz" \
 	--frecuencias-raw-base "$RAW/frecuencias" \
+	"${ARGS_EBIRD_KEY[@]}" \
 	--out-dir "$TMP/salida" --out-nombre "regional" > "$TMP/log.txt" 2>&1; then
 
 	if grep -q "No hay archivo de frecuencias" "$TMP/log.txt" 2>/dev/null; then
