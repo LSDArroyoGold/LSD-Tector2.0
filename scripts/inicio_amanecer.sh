@@ -52,6 +52,7 @@ if [ "$HORA_ACTUAL" = "$HORARIO_DELAY" ]; then
 
 	bash "$BASE_PATH/scripts/actualizar_repo.sh"
 	bash "$BASE_PATH/scripts/actualizar_modelo.sh"
+	bash "$BASE_PATH/scripts/aplicar_ajuste_regional.sh"
 
 	sudo nmcli radio wifi off
 	sudo chown "$REAL_USER:$REAL_USER" "$USER_HOME/.config/rclone/rclone.conf"
