@@ -265,6 +265,9 @@ BirdNET-Pi es el motor de grabación, análisis y extracción de detecciones: LS
 > [!NOTE]
 > Si el objetivo inmediato es solo poner en marcha la Raspberry con el software propio del LSD-Tector y dejar BirdNET-Pi para después, este paso puede saltearse: nada de los pasos anteriores depende de que esté presente. Los scripts nuevos de este repositorio (`actualizar_modelo.sh`, el chequeo de salud en los `cierre_*.sh`) detectan que no está instalado y no hacen nada.
 
+> [!NOTE]
+> **Alternativa:** [`birdnet-lsd`](https://github.com/LSDArroyoGold/birdnet-lsd) es un motor de grabación y análisis propio, en reemplazo completo de BirdNET-Pi (no un complemento) -- resuelve la falta de confirmación entre ventanas de BirdNET-Pi (ver el README de ese repo para el detalle del problema y el diseño). Usa la misma convención de carpetas y nombre de archivo, así que `cierre_amanecer.sh`/`cierre_atardecer.sh` siguen funcionando sin cambios. Si está instalado (`birdnet-lsd.service` presente), este repositorio lo detecta solo: `inicio_amanecer.sh`/`inicio_atardecer.sh` actualizan su modelo y sesgo regional en vez de los de BirdNET-Pi, y `cierre_amanecer.sh`/`cierre_atardecer.sh` chequean su salud en vez de (o además de, si ambos coexisten) la de `birdnet_recording.service`/`birdnet_analysis.service`. Sincroniza a BirdWeather y Drive por detección (no periódico) -- ver la sección de sincronización en su propio README.
+
 Desde la terminal de la RP, ejecutar:
 
 ```bash
@@ -332,6 +335,6 @@ Una vez el dispositivo está en operación en campo, los archivos `config_horari
 
 El archivo `log_sistema.txt` se sube a Drive al final de cada ventana y permite monitorear el estado del dispositivo de forma remota: cantidad de detecciones registradas y eventuales cierres sin conectividad. El campo de batería en cada entrada figura como `N/A` hasta que el INA219 esté instalado — ver la nota al principio de este README.
 
-Si BirdNET-Pi está instalado, cada cierre de ventana también chequea que `birdnet_recording.service` y `birdnet_analysis.service` sigan activos, y deja una línea `ALERTA: servicios de BirdNET-Pi caidos: ...` en el log si alguno se cayó. systemd ya los reinicia solo (`Restart=always`), así que esta alerta no es para arreglarlos: es para enterarse por Drive de un problema persistente sin tener que esperar a volver al campo y notar la falta de detecciones.
+Si BirdNET-Pi está instalado, cada cierre de ventana también chequea que `birdnet_recording.service` y `birdnet_analysis.service` sigan activos, y deja una línea `ALERTA: servicios de BirdNET-Pi caidos: ...` en el log si alguno se cayó. systemd ya los reinicia solo (`Restart=always`), así que esta alerta no es para arreglarlos: es para enterarse por Drive de un problema persistente sin tener que esperar a volver al campo y notar la falta de detecciones. Si en cambio el motor instalado es `birdnet-lsd`, el mismo chequeo aplica sobre `birdnet-lsd.service` (`ALERTA: birdnet-lsd.service caido`).
 
 Junto con `log_sistema.txt` también se sube `log_reciente.txt`, con el mismo contenido pero filtrado a solo los últimos 2 días — pensado para revisar la actividad reciente sin tener que scrollear todo el historial completo.

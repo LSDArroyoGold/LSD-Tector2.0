@@ -66,6 +66,13 @@ if [ "$HORA_ACTUAL" = "$HORARIO" ]; then
 		fi
 	fi
 
+	# Mismo chequeo que arriba, para el motor propio (birdnet-lsd) cuando
+	# es el que esta instalado en vez de BirdNET-Pi stock.
+	if systemctl list-unit-files birdnet-lsd.service &>/dev/null; then
+		systemctl is-active --quiet birdnet-lsd.service || \
+			python3 "$BASE_PATH/python/log_sistema.py" MSG "ALERTA: birdnet-lsd.service caido"
+	fi
+
 	find "$USER_HOME/BirdSongs/Extracted/By_Date/" -name "*.png" -delete
 	rm -rf "$USER_HOME/BirdSongs/Extracted/Charts/"*
 

@@ -44,8 +44,16 @@ if [ "$HORA_ACTUAL" = "$HORARIO_DELAY" ]; then
 	bash "$BASE_PATH/scripts/generar_log_reciente.sh"
 
 	bash "$BASE_PATH/scripts/actualizar_repo.sh"
-	bash "$BASE_PATH/scripts/actualizar_modelo.sh"
-	bash "$BASE_PATH/scripts/aplicar_ajuste_regional.sh"
+
+	if systemctl list-unit-files birdnet-lsd.service &>/dev/null; then
+		# Motor propio (birdnet-lsd) instalado en este dispositivo: el
+		# modelo/sesgo de BirdNET-Pi stock ya no se usa (esos servicios
+		# estan parados), se actualiza el de birdnet-lsd en su lugar.
+		bash "$USER_HOME/birdnet-lsd/scripts/actualizar_modelo.sh"
+	else
+		bash "$BASE_PATH/scripts/actualizar_modelo.sh"
+		bash "$BASE_PATH/scripts/aplicar_ajuste_regional.sh"
+	fi
 
 	sudo nmcli radio wifi off
 	sudo chown "$REAL_USER:$REAL_USER" "$USER_HOME/.config/rclone/rclone.conf"
