@@ -113,7 +113,13 @@ else
 	echo "    No se encontro $REPORTING_PY, salteado."
 fi
 
-sudo systemctl restart birdnet_analysis.service
+# birdnet-lsd (repo aparte) puede estar reemplazando a BirdNET-Pi como
+# motor de analisis en este dispositivo, en cuyo caso este servicio ya no
+# existe -- el resto de este script sigue corriendo igual, solo el
+# reinicio queda condicionado.
+if systemctl list-unit-files birdnet_analysis.service &>/dev/null; then
+	sudo systemctl restart birdnet_analysis.service
+fi
 
 echo ""
 echo "==> Configuracion completa."

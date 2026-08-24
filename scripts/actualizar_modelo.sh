@@ -72,7 +72,13 @@ mv "$TMP/modelo.tflite" "$DESTINO_TFLITE"
 mv "$TMP/modelo_labels.txt" "$DESTINO_LABELS"
 rm -rf "$TMP"
 
-sudo systemctl restart birdnet_analysis.service
+# birdnet-lsd (repo aparte) puede estar reemplazando a BirdNET-Pi como
+# motor de analisis en este dispositivo, en cuyo caso este servicio ya no
+# existe -- el resto de este script (actualizar el .tflite/labels dentro
+# de BirdNET-Pi) sigue corriendo igual, solo el reinicio queda condicionado.
+if systemctl list-unit-files birdnet_analysis.service &>/dev/null; then
+	sudo systemctl restart birdnet_analysis.service
+fi
 
 echo "$SHA_ACTUAL" > "$MARCA"
 

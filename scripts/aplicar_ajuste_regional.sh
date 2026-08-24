@@ -163,7 +163,13 @@ except Exception:
     print('?')
 ")
 
-sudo systemctl restart birdnet_analysis.service
+# birdnet-lsd (repo aparte) puede estar reemplazando a BirdNET-Pi como
+# motor de analisis en este dispositivo, en cuyo caso este servicio ya no
+# existe -- el resto de este script (ajustar el .tflite dentro de
+# BirdNET-Pi) sigue corriendo igual, solo el reinicio queda condicionado.
+if systemctl list-unit-files birdnet_analysis.service &>/dev/null; then
+	sudo systemctl restart birdnet_analysis.service
+fi
 
 echo "$ESTADO_ACTUAL" > "$MARCA_REGIONAL"
 rm -rf "$TMP"
