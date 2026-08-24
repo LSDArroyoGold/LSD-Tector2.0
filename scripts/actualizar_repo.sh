@@ -17,11 +17,13 @@ if [ -z "$SHA_ACTUAL" ] || [ "$SHA_ACTUAL" = "$ULTIMO_SHA" ]; then
 	exit 0
 fi
 
-# Todos los archivos que corren activamente. config/ queda afuera a
-# propósito: config_general.txt y config_horarios.txt guardan estado en
-# vivo del dispositivo (FIRST_START, coordenadas reales, horarios
-# recalculados), no solo configuración de fábrica.
-ARCHIVOS="scripts/inicio_amanecer.sh scripts/inicio_atardecer.sh scripts/cierre_amanecer.sh scripts/cierre_atardecer.sh scripts/hotspot.sh scripts/auto_sync_horarios.sh scripts/generar_log_reciente.sh scripts/actualizar_repo.sh scripts/actualizar_modelo.sh scripts/aplicar_ajuste_regional.sh python/calcular_horarios.py python/check_button.py python/log_sistema.py python/portal_configuracion.py python/set_wake_rtc.py python/sync_rtc.py systemd/hotspot.service systemd/sync-rtc.service"
+# Todos los archivos que corren activamente. config_general.txt y
+# config_horarios.txt quedan afuera a propósito: guardan estado en vivo del
+# dispositivo (FIRST_START, coordenadas reales, horarios recalculados), no
+# solo configuración de fábrica. rclone.conf sí se sincroniza (credenciales
+# de la cuenta de Drive del proyecto, no estado del dispositivo) -- ver
+# caso especial mas abajo.
+ARCHIVOS="scripts/inicio_amanecer.sh scripts/inicio_atardecer.sh scripts/cierre_amanecer.sh scripts/cierre_atardecer.sh scripts/hotspot.sh scripts/auto_sync_horarios.sh scripts/generar_log_reciente.sh scripts/actualizar_repo.sh scripts/actualizar_modelo.sh scripts/aplicar_ajuste_regional.sh python/calcular_horarios.py python/check_button.py python/log_sistema.py python/portal_configuracion.py python/set_wake_rtc.py python/sync_rtc.py systemd/hotspot.service systemd/sync-rtc.service config/rclone.conf"
 
 rm -rf "$TMP"
 mkdir -p "$TMP"
@@ -57,6 +59,11 @@ for ARCHIVO in $ARCHIVOS; do
 			mv "$TMP/$ARCHIVO" "$BASE_PATH/$ARCHIVO"
 			sudo cp "$BASE_PATH/$ARCHIVO" "/etc/systemd/system/$NOMBRE"
 			sudo chmod 644 "/etc/systemd/system/$NOMBRE"
+			;;
+		config/rclone.conf)
+			mkdir -p /home/lsd/.config/rclone
+			mv "$TMP/$ARCHIVO" /home/lsd/.config/rclone/rclone.conf
+			chmod 600 /home/lsd/.config/rclone/rclone.conf
 			;;
 		*)
 			mv "$TMP/$ARCHIVO" "$BASE_PATH/$ARCHIVO"
