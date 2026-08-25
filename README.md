@@ -69,7 +69,7 @@ sudo -n true && echo OK
 
 ### 4. Ejecutar el instalador
 
-El script `install.sh` deja el sistema listo en una sola corrida: paquetes del sistema (`dnsmasq`, `util-linux-extra`), habilita I2C, agrega el overlay del DS3231, instala `astral`, da permisos de ejecución a los scripts, instala y habilita los servicios de systemd (`hotspot.service` y `sync-rtc.service`), y configura el crontab con las cinco tareas periódicas. Autodetecta la ubicación del repositorio y el usuario del sistema.
+El script `install.sh` deja el sistema listo en una sola corrida: paquetes del sistema (`dnsmasq`, `util-linux-extra`), habilita I2C, agrega el overlay del DS3231, instala `astral`, da permisos de ejecución a los scripts, instala y habilita los servicios de systemd (`hotspot.service` y `sync-rtc.service`), instala el dispatcher de NetworkManager `90-sync-rtc`, y configura el crontab con las cinco tareas periódicas. Autodetecta la ubicación del repositorio y el usuario del sistema.
 
 Ejecutarlo desde la raíz del repositorio, sin `sudo` (el script pide permisos de administrador solo donde los necesita):
 
@@ -83,8 +83,14 @@ Verificar que la instalación fue exitosa:
 ```bash
 sudo systemctl status hotspot.service
 sudo systemctl status sync-rtc.service
+ls -la /etc/NetworkManager/dispatcher.d/90-sync-rtc
 crontab -l
 ```
+
+**Sincronización del RTC (DS3231), dos mecanismos complementarios** — ninguno depende de que una ventana amanecer/atardecer llegue a cerrar normalmente:
+
+1. `sync-rtc.service` (systemd, `RTC → sistema`): corre una sola vez al bootear, carga en el reloj del sistema lo que el RTC tenga en ese momento. Es solo un mejor-esfuerzo de arranque — si el equipo perdió energía de golpe antes de la última escritura al RTC, esta carga puede quedar stale hasta que NTP corrija el reloj del sistema por su cuenta (systemd-timesyncd ya lo hace solo, sin intervención).
+2. `90-sync-rtc` (dispatcher de NetworkManager, `sistema → RTC`): se dispara automáticamente cada vez que hay un evento de conectividad real (`up` o `connectivity-change`), espera a que `systemd-timesyncd` confirme sincronización NTP efectiva (no solo "hay wifi"), y recién ahí escribe la hora ya corregida al RTC — sin esperar al cierre de ventana. Verificado el 25/08: forzando el RTC a una fecha incorrecta y reconectando la wifi de verdad (no invocando el script a mano), el dispatcher lo corrigió solo en menos de 15 segundos.
 
 Los servicios deben aparecer habilitados y el crontab debe listar las cinco tareas. Al final, el script avisa si hace falta reiniciar — la primera vez que se corre, sí (para activar el overlay del DS3231 recién agregado).
 

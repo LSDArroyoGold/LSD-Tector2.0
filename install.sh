@@ -86,6 +86,20 @@ sudo systemctl enable sync-rtc.service
 
 echo "    Servicios hotspot.service y sync-rtc.service habilitados"
 
+# 90-sync-rtc: dispatcher de NetworkManager, complementa a sync-rtc.service.
+# sync-rtc.service solo carga el RTC al sistema al bootear (mejor esfuerzo
+# con lo que el RTC tenga en ese momento, puede estar stale si el equipo
+# perdio energia de golpe antes de la ultima escritura). Este dispatcher
+# escribe el RTC cada vez que hay conectividad real confirmada por NTP, sin
+# depender de que una ventana amanecer/atardecer llegue a su cierre normal.
+# No requiere "systemctl enable": NetworkManager lo detecta solo por estar
+# presente y ser ejecutable en dispatcher.d/.
+sudo cp "$SYSTEMD_DIR/90-sync-rtc" /etc/NetworkManager/dispatcher.d/90-sync-rtc
+sudo chown root:root /etc/NetworkManager/dispatcher.d/90-sync-rtc
+sudo chmod 755 /etc/NetworkManager/dispatcher.d/90-sync-rtc
+
+echo "    Dispatcher 90-sync-rtc instalado (sincroniza el RTC en cada conexion real)"
+
 # --- 7. Crontab del usuario ---
 echo "==> Configurando crontab para el usuario $REAL_USER"
 

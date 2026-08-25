@@ -23,7 +23,7 @@ fi
 # solo configuración de fábrica. rclone.conf sí se sincroniza (credenciales
 # de la cuenta de Drive del proyecto, no estado del dispositivo) -- ver
 # caso especial mas abajo.
-ARCHIVOS="scripts/inicio_amanecer.sh scripts/inicio_atardecer.sh scripts/cierre_amanecer.sh scripts/cierre_atardecer.sh scripts/hotspot.sh scripts/auto_sync_horarios.sh scripts/generar_log_reciente.sh scripts/actualizar_repo.sh scripts/actualizar_modelo.sh scripts/aplicar_ajuste_regional.sh python/calcular_horarios.py python/check_button.py python/log_sistema.py python/portal_configuracion.py python/set_wake_rtc.py python/sync_rtc.py systemd/hotspot.service systemd/sync-rtc.service config/rclone.conf"
+ARCHIVOS="scripts/inicio_amanecer.sh scripts/inicio_atardecer.sh scripts/cierre_amanecer.sh scripts/cierre_atardecer.sh scripts/hotspot.sh scripts/auto_sync_horarios.sh scripts/generar_log_reciente.sh scripts/actualizar_repo.sh scripts/actualizar_modelo.sh scripts/aplicar_ajuste_regional.sh python/calcular_horarios.py python/check_button.py python/log_sistema.py python/portal_configuracion.py python/set_wake_rtc.py python/sync_rtc.py systemd/hotspot.service systemd/sync-rtc.service systemd/90-sync-rtc config/rclone.conf"
 
 rm -rf "$TMP"
 mkdir -p "$TMP"
@@ -53,6 +53,15 @@ for ARCHIVO in $ARCHIVOS; do
 			mv "$TMP/$ARCHIVO" "$BASE_PATH/$ARCHIVO"
 			sed "s|__BASE_PATH__|$BASE_PATH|g" "$BASE_PATH/$ARCHIVO" | sudo tee /etc/systemd/system/hotspot.service > /dev/null
 			sudo chmod 644 /etc/systemd/system/hotspot.service
+			;;
+		systemd/90-sync-rtc)
+			# No es una unit de systemd (pese a vivir en systemd/ junto a
+			# las que si lo son) -- es un dispatcher de NetworkManager,
+			# va a otra carpeta y necesita permisos de ejecucion, no 644.
+			mv "$TMP/$ARCHIVO" "$BASE_PATH/$ARCHIVO"
+			sudo cp "$BASE_PATH/$ARCHIVO" /etc/NetworkManager/dispatcher.d/90-sync-rtc
+			sudo chown root:root /etc/NetworkManager/dispatcher.d/90-sync-rtc
+			sudo chmod 755 /etc/NetworkManager/dispatcher.d/90-sync-rtc
 			;;
 		systemd/*)
 			NOMBRE=$(basename "$ARCHIVO")
