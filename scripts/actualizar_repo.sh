@@ -20,10 +20,18 @@ fi
 # Todos los archivos que corren activamente. config_general.txt y
 # config_horarios.txt quedan afuera a propósito: guardan estado en vivo del
 # dispositivo (FIRST_START, coordenadas reales, horarios recalculados), no
-# solo configuración de fábrica. rclone.conf sí se sincroniza (credenciales
-# de la cuenta de Drive del proyecto, no estado del dispositivo) -- ver
-# caso especial mas abajo.
-ARCHIVOS="scripts/inicio_amanecer.sh scripts/inicio_atardecer.sh scripts/cierre_amanecer.sh scripts/cierre_atardecer.sh scripts/hotspot.sh scripts/auto_sync_horarios.sh scripts/generar_log_reciente.sh scripts/actualizar_repo.sh scripts/actualizar_modelo.sh scripts/aplicar_ajuste_regional.sh python/calcular_horarios.py python/check_button.py python/log_sistema.py python/portal_configuracion.py python/set_wake_rtc.py python/sync_rtc.py systemd/hotspot.service systemd/sync-rtc.service systemd/90-sync-rtc config/rclone.conf"
+# solo configuración de fábrica.
+#
+# config/rclone.conf SACADO de esta lista el 31/08/2026 (antes se sincronizaba
+# igual que el resto): tiene credenciales OAuth reales (client_secret,
+# refresh_token), y este repo es publico -- GitHub lo detecto via su programa
+# de partners de secret scanning (Google Cloud es partner) y Google revoco el
+# token solo, silenciosamente, ~1 semana despues de que se commiteo,
+# rompiendo la sincronizacion a Drive sin ningun aviso. Ver
+# config/rclone.conf.ejemplo para la forma del archivo -- el real se pone a
+# mano en cada dispositivo (/home/lsd/.config/rclone/rclone.conf), nunca via
+# git/este script.
+ARCHIVOS="scripts/inicio_amanecer.sh scripts/inicio_atardecer.sh scripts/cierre_amanecer.sh scripts/cierre_atardecer.sh scripts/hotspot.sh scripts/auto_sync_horarios.sh scripts/generar_log_reciente.sh scripts/actualizar_repo.sh scripts/actualizar_modelo.sh scripts/aplicar_ajuste_regional.sh python/calcular_horarios.py python/check_button.py python/log_sistema.py python/portal_configuracion.py python/set_wake_rtc.py python/sync_rtc.py systemd/hotspot.service systemd/sync-rtc.service systemd/90-sync-rtc"
 
 rm -rf "$TMP"
 mkdir -p "$TMP"
@@ -68,11 +76,6 @@ for ARCHIVO in $ARCHIVOS; do
 			mv "$TMP/$ARCHIVO" "$BASE_PATH/$ARCHIVO"
 			sudo cp "$BASE_PATH/$ARCHIVO" "/etc/systemd/system/$NOMBRE"
 			sudo chmod 644 "/etc/systemd/system/$NOMBRE"
-			;;
-		config/rclone.conf)
-			mkdir -p /home/lsd/.config/rclone
-			mv "$TMP/$ARCHIVO" /home/lsd/.config/rclone/rclone.conf
-			chmod 600 /home/lsd/.config/rclone/rclone.conf
 			;;
 		*)
 			mv "$TMP/$ARCHIVO" "$BASE_PATH/$ARCHIVO"
