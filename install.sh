@@ -49,12 +49,21 @@ echo "==> Habilitando I2C"
 sudo raspi-config nonint do_i2c 0
 
 # --- 3. Overlay del DS3231 ---
+# wakeup-source: sin este parametro el kernel no expone
+# /sys/class/rtc/rtc0/wakealarm (necesario para set_wake_rtc.py) aunque el
+# RTC funcione bien para todo lo demas -- no hace falta declarar el pin de
+# interrupcion del DS3231 como GPIO de la Raspberry, porque en este
+# circuito ese pin va directo al latch 74HC74, no a la Pi.
 echo "==> Configurando overlay del DS3231 en $CONFIG_TXT"
 REBOOT_NECESARIO=0
-if grep -q "^dtoverlay=i2c-rtc,ds3231" "$CONFIG_TXT" 2>/dev/null; then
+if grep -q "^dtoverlay=i2c-rtc,ds3231,wakeup-source" "$CONFIG_TXT" 2>/dev/null; then
 	echo "    Ya estaba configurado."
+elif grep -q "^dtoverlay=i2c-rtc,ds3231" "$CONFIG_TXT" 2>/dev/null; then
+	sudo sed -i "s|^dtoverlay=i2c-rtc,ds3231.*|dtoverlay=i2c-rtc,ds3231,wakeup-source|" "$CONFIG_TXT"
+	echo "    Agregado wakeup-source a la linea existente."
+	REBOOT_NECESARIO=1
 else
-	echo "dtoverlay=i2c-rtc,ds3231" | sudo tee -a "$CONFIG_TXT" > /dev/null
+	echo "dtoverlay=i2c-rtc,ds3231,wakeup-source" | sudo tee -a "$CONFIG_TXT" > /dev/null
 	echo "    Agregado."
 	REBOOT_NECESARIO=1
 fi
@@ -77,14 +86,23 @@ sed "s|__BASE_PATH__|$BASE_PATH|g" "$SYSTEMD_DIR/hotspot.service" \
 # sync-rtc.service: no tiene rutas del proyecto, se copia tal cual
 sudo cp "$SYSTEMD_DIR/sync-rtc.service" /etc/systemd/system/sync-rtc.service
 
+# cortar-alimentacion.service: mismo placeholder que hotspot.service. Se
+# habilita (queda "activo" via RemainAfterExit) para que al llegar un
+# poweroff/halt real systemd lo pare y corra el ExecStop= -- ver notas en
+# el archivo de la unit sobre por que no se dispara con reboot.
+sed "s|__BASE_PATH__|$BASE_PATH|g" "$SYSTEMD_DIR/cortar-alimentacion.service" \
+	| sudo tee /etc/systemd/system/cortar-alimentacion.service > /dev/null
+
 sudo chmod 644 /etc/systemd/system/hotspot.service
 sudo chmod 644 /etc/systemd/system/sync-rtc.service
+sudo chmod 644 /etc/systemd/system/cortar-alimentacion.service
 
 sudo systemctl daemon-reload
 sudo systemctl enable hotspot.service
 sudo systemctl enable sync-rtc.service
+sudo systemctl enable --now cortar-alimentacion.service
 
-echo "    Servicios hotspot.service y sync-rtc.service habilitados"
+echo "    Servicios hotspot.service, sync-rtc.service y cortar-alimentacion.service habilitados"
 
 # 90-sync-rtc: dispatcher de NetworkManager, complementa a sync-rtc.service.
 # sync-rtc.service solo carga el RTC al sistema al bootear (mejor esfuerzo

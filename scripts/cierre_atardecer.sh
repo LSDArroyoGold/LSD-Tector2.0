@@ -43,11 +43,17 @@ if [ "$HORA_ACTUAL" = "$HORARIO" ]; then
 		bash "$BASE_PATH/scripts/auto_sync_horarios.sh"
 
 		python3 "$BASE_PATH/python/set_wake_rtc.py" $HORA_WAKE
+		ALARMA_ARMADA=$?
 
 		sudo chown "$REAL_USER:$REAL_USER" "$USER_HOME/.config/rclone/rclone.conf"
 
-		# PENDIENTE: ver nota de cierre_amanecer.sh sobre el apagado
-		# (SetPowerOff + poweroff de la v1.1) -- sigue sin circuito de corte.
+		# Ver nota de cierre_amanecer.sh sobre por que el apagado depende de
+		# que la alarma haya quedado armada.
+		if [ "$ALARMA_ARMADA" -eq 0 ]; then
+			sudo poweroff
+		else
+			python3 "$BASE_PATH/python/log_sistema.py" MSG "ALERTA: alarma RTC no se pudo armar, NO se apaga (quedaria sin forma de despertar)"
+		fi
 	fi
 
 	sudo systemctl restart systemd-timesyncd
@@ -97,9 +103,15 @@ if [ "$HORA_ACTUAL" = "$HORARIO" ]; then
 	sudo nmcli radio wifi off
 
 	python3 "$BASE_PATH/python/set_wake_rtc.py" $HORA_WAKE
-
-	# PENDIENTE: ver nota de cierre_amanecer.sh sobre el apagado (SetPowerOff
-	# + poweroff de la v1.1) -- sigue sin circuito de corte.
+	ALARMA_ARMADA=$?
 
 	echo "Cierre atardecer completado a las $HORA_ACTUAL"
+
+	# Ver nota equivalente mas arriba en este mismo archivo sobre por que el
+	# apagado depende de que la alarma haya quedado armada.
+	if [ "$ALARMA_ARMADA" -eq 0 ]; then
+		sudo poweroff
+	else
+		python3 "$BASE_PATH/python/log_sistema.py" MSG "ALERTA: alarma RTC no se pudo armar, NO se apaga (quedaria sin forma de despertar)"
+	fi
 fi

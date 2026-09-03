@@ -43,13 +43,19 @@ if [ "$HORA_ACTUAL" = "$HORARIO" ]; then
 		bash "$BASE_PATH/scripts/auto_sync_horarios.sh"
 
 		python3 "$BASE_PATH/python/set_wake_rtc.py" $HORA_WAKE
+		ALARMA_ARMADA=$?
 
 		sudo chown "$REAL_USER:$REAL_USER" "$USER_HOME/.config/rclone/rclone.conf"
 
-		# PENDIENTE: acá la v1.1 apagaba la Raspberry (SetPowerOff + poweroff)
-		# después de programar la alarma. Sin circuito de corte de energía
-		# todavía (ver notas de set_wake_rtc.py y el README), la Pi sigue
-		# encendida -- no hay poweroff que hacer.
+		# Solo apagar si la alarma quedo confirmada -- si no, la Pi quedaria
+		# sin forma de despertar sola (el circuito de corte no distingue
+		# "alarma armada" de "alarma vieja/sin armar", asi que es este
+		# script el que tiene que frenar el apagado si algo fallo).
+		if [ "$ALARMA_ARMADA" -eq 0 ]; then
+			sudo poweroff
+		else
+			python3 "$BASE_PATH/python/log_sistema.py" MSG "ALERTA: alarma RTC no se pudo armar, NO se apaga (quedaria sin forma de despertar)"
+		fi
 	fi
 
 	sudo systemctl restart systemd-timesyncd
@@ -106,9 +112,15 @@ if [ "$HORA_ACTUAL" = "$HORARIO" ]; then
 	sudo chown "$REAL_USER:$REAL_USER" "$USER_HOME/.config/rclone/rclone.conf"
 
 	python3 "$BASE_PATH/python/set_wake_rtc.py" $HORA_WAKE
-
-	# PENDIENTE: acá también apagaba la v1.1 (SetPowerOff + poweroff). Ver
-	# nota equivalente más arriba en este mismo archivo.
+	ALARMA_ARMADA=$?
 
 	echo "Cierre amanecer completado a las $HORA_ACTUAL"
+
+	# Ver nota equivalente mas arriba en este mismo archivo sobre por que
+	# el apagado depende de que la alarma haya quedado armada.
+	if [ "$ALARMA_ARMADA" -eq 0 ]; then
+		sudo poweroff
+	else
+		python3 "$BASE_PATH/python/log_sistema.py" MSG "ALERTA: alarma RTC no se pudo armar, NO se apaga (quedaria sin forma de despertar)"
+	fi
 fi
