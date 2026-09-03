@@ -30,9 +30,9 @@ echo "    Usuario: $REAL_USER"
 echo ""
 
 # --- 1. Paquetes del sistema ---
-echo "==> Paquetes del sistema (dnsmasq, util-linux-extra)"
+echo "==> Paquetes del sistema (dnsmasq, util-linux-extra, i2c-tools)"
 sudo apt-get update -qq
-sudo apt-get install -y -qq dnsmasq util-linux-extra
+sudo apt-get install -y -qq dnsmasq util-linux-extra i2c-tools
 
 # NO habilitar dnsmasq como servicio systemd: hotspot.sh lo mata a mano
 # (pkill dnsmasq) antes de levantar el AP, y NetworkManager lanza su propia
@@ -69,8 +69,11 @@ else
 fi
 
 # --- 4. Dependencias de Python ---
-echo "==> Dependencias de Python (astral)"
-pip install astral --break-system-packages --quiet
+echo "==> Dependencias de Python (astral, smbus2)"
+pip install astral smbus2 --break-system-packages --quiet
+# smbus2 es para el DS3231 (lectura directa de registros, ver
+# python/set_wake_rtc.py) y el INA219 (ver python/leer_ina219.py, PENDIENTE
+# de integrar a un watchdog -- ver config/config_general.txt).
 
 # --- 5. Permisos de ejecucion a los scripts ---
 echo "==> Dando permisos de ejecucion a los scripts .sh"
