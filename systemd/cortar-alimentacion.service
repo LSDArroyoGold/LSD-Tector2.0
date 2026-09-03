@@ -7,7 +7,7 @@ Before=poweroff.target halt.target
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStart=/bin/true
+ExecStart=/usr/bin/python3 __BASE_PATH__/python/cortar_alimentacion.py armar
 ExecStop=/usr/bin/python3 __BASE_PATH__/python/cortar_alimentacion.py
 
 [Install]
