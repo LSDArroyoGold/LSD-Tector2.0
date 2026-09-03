@@ -20,19 +20,15 @@ HORARIO_DELAY=$(echo "$HORARIO" | awk -F: '{m=$2+2; h=$1; if(m>=60){m=m-60} prin
 
 if [ "$HORA_ACTUAL" = "$HORARIO_DELAY" ]; then
 
-	# PENDIENTE: chequeo de bateria por INA219. La v1.1 calculaba aca un
-	# umbral predictivo (formula CONSUMO_W/CAPACIDAD_MAH/VOLTAJE_BATERIA/
-	# MARGEN_SEGURIDAD) via la API de PiJuice, y cancelaba la ventana si el
-	# nivel no alcanzaba. Sin PiJuice y sin el INA219 armado todavia, no hay
-	# forma de medir bateria: la ventana arranca siempre. Cuando el INA219
-	# este instalado, retomar el chequeo aca (o, mejor, migrar al esquema de
-	# watchdog reactivo de la v1.1 -- ver chequeo_bateria.sh -- en vez de
-	# volver al corte predictivo). El umbral a usar ya esta definido --
-	# UMBRAL_BATERIA_V=6.9 (ver config/config_general.txt) -- falta unicamente
-	# el hardware y la lectura del sensor.
+	# Reset defensivo: si el cierre anterior no llego a resetear estos
+	# flags (crash, corte de energia a mitad de ventana), no arrancar ya
+	# con CIERRE_FORZADO=TRUE puesto de una ventana vieja.
+	sed -i "s/^VENTANA_ACTIVA=.*/VENTANA_ACTIVA=NONE/" "$CONFIG_GENERAL"
+	sed -i "s/^CIERRE_FORZADO=.*/CIERRE_FORZADO=FALSE/" "$CONFIG_GENERAL"
 
 	FIN_ESPERADO=$(awk -F'=' '/FIN_AMANECER/{print $2}' "$CONFIG_HORARIOS" | tr -d ' \r')
 	python3 "$BASE_PATH/python/log_sistema.py" INICIO amanecer $FIN_ESPERADO
+	sed -i "s/^VENTANA_ACTIVA=.*/VENTANA_ACTIVA=amanecer/" "$CONFIG_GENERAL"
 
 	sudo nmcli radio wifi on
 	INTENTOS=0
@@ -53,10 +49,20 @@ if [ "$HORA_ACTUAL" = "$HORARIO_DELAY" ]; then
 	bash "$BASE_PATH/scripts/actualizar_repo.sh"
 
 	if systemctl list-unit-files birdnet-lsd.service &>/dev/null; then
-		# Motor propio (birdnet-lsd) instalado en este dispositivo: el
-		# modelo/sesgo de BirdNET-Pi stock ya no se usa (esos servicios
-		# estan parados), se actualiza el de birdnet-lsd en su lugar.
-		bash "$USER_HOME/birdnet-lsd/scripts/actualizar_modelo.sh"
+		# Motor propio (birdnet-lsd) instalado en este dispositivo: en vez
+		# de actualizar_modelo.sh (retirado del repo birdnet-lsd el 29/08,
+		# TensorFlow/modelo reentrenado reemplazados por TectorNet), se usa
+		# actualizar_birdnet_lsd.sh -- hace git pull + reinstala si cambiaron
+		# dependencias + reinicia con chequeo de salud (revierte solo si el
+		# commit nuevo rompe el servicio).
+		if [ -f "$USER_HOME/birdnet-lsd/scripts/actualizar_birdnet_lsd.sh" ]; then
+			bash "$USER_HOME/birdnet-lsd/scripts/actualizar_birdnet_lsd.sh"
+		else
+			# Arranque en frio: checkout viejo, todavia no tiene este script
+			# (recien lo trae el pull). Sin chequeo de salud esta vez.
+			git -C "$USER_HOME/birdnet-lsd" pull --quiet 2>/dev/null
+			sudo systemctl restart birdnet-lsd.service 2>/dev/null
+		fi
 	else
 		bash "$BASE_PATH/scripts/actualizar_modelo.sh"
 		bash "$BASE_PATH/scripts/aplicar_ajuste_regional.sh"

@@ -20,12 +20,13 @@ HORARIO_DELAY=$(echo "$HORARIO" | awk -F: '{m=$2+2; h=$1; if(m>=60){m=m-60} prin
 
 if [ "$HORA_ACTUAL" = "$HORARIO_DELAY" ]; then
 
-	# PENDIENTE: mismo chequeo de bateria por INA219 pendiente que en
-	# inicio_amanecer.sh -- ver ese archivo para el detalle. Umbral ya
-	# definido: UMBRAL_BATERIA_V=6.9 (ver config/config_general.txt).
+	# Reset defensivo -- ver el comentario equivalente en inicio_amanecer.sh.
+	sed -i "s/^VENTANA_ACTIVA=.*/VENTANA_ACTIVA=NONE/" "$CONFIG_GENERAL"
+	sed -i "s/^CIERRE_FORZADO=.*/CIERRE_FORZADO=FALSE/" "$CONFIG_GENERAL"
 
 	FIN_ESPERADO=$(awk -F'=' '/FIN_ATARDECER/{print $2}' "$CONFIG_HORARIOS" | tr -d ' \r')
 	python3 "$BASE_PATH/python/log_sistema.py" INICIO atardecer $FIN_ESPERADO
+	sed -i "s/^VENTANA_ACTIVA=.*/VENTANA_ACTIVA=atardecer/" "$CONFIG_GENERAL"
 
 	sudo nmcli radio wifi on
 	INTENTOS=0
@@ -46,10 +47,13 @@ if [ "$HORA_ACTUAL" = "$HORARIO_DELAY" ]; then
 	bash "$BASE_PATH/scripts/actualizar_repo.sh"
 
 	if systemctl list-unit-files birdnet-lsd.service &>/dev/null; then
-		# Motor propio (birdnet-lsd) instalado en este dispositivo: el
-		# modelo/sesgo de BirdNET-Pi stock ya no se usa (esos servicios
-		# estan parados), se actualiza el de birdnet-lsd en su lugar.
-		bash "$USER_HOME/birdnet-lsd/scripts/actualizar_modelo.sh"
+		# Ver el comentario equivalente en inicio_amanecer.sh.
+		if [ -f "$USER_HOME/birdnet-lsd/scripts/actualizar_birdnet_lsd.sh" ]; then
+			bash "$USER_HOME/birdnet-lsd/scripts/actualizar_birdnet_lsd.sh"
+		else
+			git -C "$USER_HOME/birdnet-lsd" pull --quiet 2>/dev/null
+			sudo systemctl restart birdnet-lsd.service 2>/dev/null
+		fi
 	else
 		bash "$BASE_PATH/scripts/actualizar_modelo.sh"
 		bash "$BASE_PATH/scripts/aplicar_ajuste_regional.sh"

@@ -7,11 +7,9 @@ El sistema gestiona automáticamente ventanas de grabación en horarios de amane
 Este software fue desarrollado y probado sobre una **Raspberry Pi 4 Model B (2GB RAM)**. No se garantiza compatibilidad con otros modelos o configuraciones de hardware.
 
 > [!IMPORTANT]
-> **Hardware en transición respecto al LSD-Tector 1.0/1.1.** Esta versión reemplaza la PiJuice HAT por un RTC externo **DS3231** (batería de dos celdas, gestión de energía a definir) y, más adelante, un módulo **INA219** para medir batería por voltaje/corriente. Al día de hoy:
-> - **No hay monitoreo de batería.** El código que lo hacía (watchdog o umbral predictivo) está comentado en `inicio_*.sh`, `cierre_*.sh` y `log_sistema.py`, con una nota `PENDIENTE` explicando qué retomar cuando el INA219 esté instalado. El umbral de corte ya está definido — `UMBRAL_BATERIA_V=6.9` (pack 2S, ≈3.45V/celda, ≈15% de capacidad) — comentado en `config/config_general.txt` junto con su justificación; solo falta el hardware para aplicarlo.
-> - **La Raspberry no se apaga entre ventanas todavía.** Falta el circuito que corte y reponga físicamente la alimentación a partir de la alarma del DS3231 (un MOSFET/latch disparado por su pin SQW/INT, con un temporizador de gracia para el apagado prolijo — ver la discusión de diseño del 14/8 en el cuaderno de laboratorio). Hasta que ese circuito exista, el equipo queda siempre encendido y `set_wake_rtc.py` no tiene efecto real; la implementación completa está comentada ahí mismo, lista para descomentar.
->
-> Ninguna de estas ausencias impide poner en marcha el dispositivo: las ventanas de grabación arrancan y cierran igual, solo que sin corte de energía ni chequeo de batería.
+> **Hardware en transición respecto al LSD-Tector 1.0/1.1.** Esta versión reemplaza la PiJuice HAT por un RTC externo **DS3231** + un latch propio (74HC74 + MOSFET P) para el corte/reposición física de alimentación, y un módulo **INA219** para medir batería por voltaje/corriente. Estado al 3/9/2026 (verificado en banco sobre tector2, todavía no probado en campo):
+> - **La Raspberry sí se apaga y despierta sola entre ventanas.** El circuito DS3231+latch+MOSFET está armado y probado de punta a punta: `cierre_amanecer.sh`/`cierre_atardecer.sh` arman la alarma del RTC (`set_wake_rtc.py`) y recién ahí apagan (`sudo poweroff`, solo si la alarma quedó confirmada armada); el corte físico real lo hace `cortar-alimentacion.service` (pulso de GPIO al latch, se dispara justo antes del apagado final del kernel, nunca en un `reboot`).
+> - **Hay monitoreo de batería activo.** `chequeo_bateria.sh` corre cada 5 min por cron, lee el INA219 (`python/leer_ina219.py`) y fuerza el cierre de la ventana (`CIERRE_FORZADO`) si el voltaje cae por debajo de `UMBRAL_BATERIA_V=6.9` — corte por voltaje puro, no por ningún porcentaje estimado (más robusto). Un % de batería más preciso para logs/dashboard (compensado por caída IR + curva empírica del pack, en vez de la curva genérica del datasheet) queda pendiente — no bloquea nada del funcionamiento, ver la nota completa en `config/config_general.txt`.
 
 ---
 
@@ -119,7 +117,7 @@ sudo hwclock -w
 ```
 
 > [!NOTE]
-> La alarma del DS3231 (usada para despertar la Raspberry desde apagado) todavía no se programa desde ningún script — ver la nota `PENDIENTE` al principio de este README y en `python/set_wake_rtc.py`.
+> La alarma del DS3231 la programa `python/set_wake_rtc.py`, llamado desde `cierre_amanecer.sh`/`cierre_atardecer.sh` antes de apagar — activo desde el 3/9/2026, ver la nota al principio de este README.
 
 ### 6. rclone
 
@@ -206,7 +204,7 @@ El archivo contiene los siguientes parámetros:
 | `LAT` y `LON` | Coordenadas geográficas del lugar de instalación. Pueden dejarse con valores aproximados ya que se actualizan automáticamente mediante geolocalización por IP al utilizar el modo hotspot. |
 
 > [!NOTE]
-> Los parámetros energéticos de la v1.1 (`CONSUMO_W`, `CAPACIDAD_MAH`, `VOLTAJE_BATERIA`, `MARGEN_SEGURIDAD`, `UMBRAL_BATERIA`) no están en este archivo: dependían de la PiJuice o de un watchdog de batería que todavía no existe para este hardware. El nuevo esquema por voltaje ya tiene su umbral definido (`UMBRAL_BATERIA_V=6.9`, comentado al principio del archivo junto con la justificación completa) y va a activarse cuando el INA219 esté instalado — ver la nota al principio de este README.
+> Los parámetros energéticos de la v1.1 (`CONSUMO_W`, `CAPACIDAD_MAH`, `VOLTAJE_BATERIA`, `MARGEN_SEGURIDAD`, `UMBRAL_BATERIA`) no están en este archivo: dependían de la PiJuice y su corte predictivo, que este hardware no tiene. El esquema nuevo es reactivo por voltaje puro (`UMBRAL_BATERIA_V=6.9`, justificación completa al principio del archivo) vía `scripts/chequeo_bateria.sh` — activo desde el 3/9/2026, ver la nota al principio de este README.
 
 **Editar `config_horarios.txt`:**
 

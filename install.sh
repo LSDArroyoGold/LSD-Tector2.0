@@ -129,7 +129,8 @@ CRON_LINES="* * * * * $SCRIPTS_DIR/cierre_amanecer.sh
 * * * * * $SCRIPTS_DIR/cierre_atardecer.sh
 * * * * * $SCRIPTS_DIR/inicio_amanecer.sh
 * * * * * $SCRIPTS_DIR/inicio_atardecer.sh
-* * * * * python3 $PYTHON_DIR/check_button.py"
+* * * * * python3 $PYTHON_DIR/check_button.py
+*/5 * * * * $SCRIPTS_DIR/chequeo_bateria.sh"
 
 # Tomar el crontab actual del usuario (si existe), quitar cualquier linea previa
 # de LSD-Tector para no duplicar, y agregar las nuevas.
@@ -137,7 +138,7 @@ CRON_ACTUAL=$(crontab -u "$REAL_USER" -l 2>/dev/null | grep -v "$SCRIPTS_DIR" | 
 
 printf '%s\n%s\n' "$CRON_ACTUAL" "$CRON_LINES" | grep -v '^$' | crontab -u "$REAL_USER" -
 
-echo "    Crontab configurado con 5 tareas"
+echo "    Crontab configurado con 6 tareas"
 
 # --- Fin ---
 echo ""

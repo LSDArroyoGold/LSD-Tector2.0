@@ -4,24 +4,25 @@ DRIVE_PATH=Laboratorio 7/Tector 2
 
 # -------------------------
 
-# PENDIENTE — monitoreo de batería por INA219 (voltaje/corriente vía I2C).
+# Monitoreo de batería por INA219 (voltaje/corriente vía I2C) -- ACTIVO
+# desde el 3/9/2026.
 #
-# HARDWARE: instalado y verificado funcionando el 3/9/2026. INA219 en
-# serie en el cable positivo principal (entre pack y entrada del step-down
-# -- así mide corriente real del sistema, no solo voltaje), VCC del propio
-# módulo alimentado del 3.3V de la Pi (pin 1 -- no necesita estar siempre
-# encendido, solo se lee mientras la Pi está despierta), SDA/SCL
-# compartiendo el mismo bus I2C que el DS3231 (bus 1, dirección 0x40,
-# sin conflicto con el 0x68 del RTC). Lecturas reales confirmadas:
-# 7.596V / 478mA con la Pi corriendo birdnet-lsd normalmente -- ambos
-# valores con sentido físico (2S2P Samsung INR18650-35E, ~3.8V/celda).
+# HARDWARE: INA219 en serie en el cable positivo principal (entre pack y
+# entrada del step-down -- así mide corriente real del sistema, no solo
+# voltaje), VCC del propio módulo alimentado del 3.3V de la Pi (pin 1 --
+# no necesita estar siempre encendido, solo se lee mientras la Pi está
+# despierta), SDA/SCL compartiendo el mismo bus I2C que el DS3231 (bus 1,
+# dirección 0x40, sin conflicto con el 0x68 del RTC). Lecturas reales
+# confirmadas: 7.596V / 478mA con la Pi corriendo birdnet-lsd normalmente
+# -- ambos valores con sentido físico (2S2P Samsung INR18650-35E, ~3.8V/celda).
 #
-# SOFTWARE: todavía no está escrito. VENTANA_ACTIVA/CIERRE_FORZADO de acá
-# abajo son plantilla heredada de la v1.1, nunca se cablearon a
-# inicio_*.sh/cierre_*.sh en este repo -- hay que construir el watchdog
-# reactivo de cero (cron cada 5 min leyendo el INA219, comparando contra
-# UMBRAL_BATERIA_V, marcando CIERRE_FORZADO=TRUE), no alcanza con
-# descomentar algo existente.
+# SOFTWARE: watchdog reactivo tipo v1.1 -- scripts/chequeo_bateria.sh corre
+# cada 5 min por cron, lee el INA219 (python/leer_ina219.py) solo si hay
+# una ventana activa, y si el voltaje cae por debajo de UMBRAL_BATERIA_V
+# marca CIERRE_FORZADO=TRUE. inicio_amanecer/atardecer.sh ponen
+# VENTANA_ACTIVA al arrancar la ventana; cierre_amanecer/atardecer.sh
+# cierran antes de tiempo si ven CIERRE_FORZADO=TRUE (además del cierre
+# normal por horario) y resetean los dos flags al terminar.
 #
 # DISEÑO ACORDADO (3/9, sesión con Diego) -- dos partes separadas a
 # propósito, no una sola cosa:
@@ -75,12 +76,9 @@ DRIVE_PATH=Laboratorio 7/Tector 2
 #    mecanismo del watchdog sigue comparando contra voltios siempre, la
 #    curva nunca pasa a ser parte del disparo en sí.
 #
-# Cuando el INA219 esté instalado, activar algo del estilo (a definir
-# junto con la lógica del watchdog en chequeo_bateria.sh):
-#
-# UMBRAL_BATERIA_V=6.9
-# VENTANA_ACTIVA=NONE
-# CIERRE_FORZADO=FALSE
+UMBRAL_BATERIA_V=6.9
+VENTANA_ACTIVA=NONE
+CIERRE_FORZADO=FALSE
 
 # -------------------------
 

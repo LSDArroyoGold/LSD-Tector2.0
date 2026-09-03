@@ -15,8 +15,14 @@ DRIVE_PATH=$(awk -F'=' '/^DRIVE_PATH=/{print $2}' "$CONFIG_GENERAL" | tr -d '\r'
 
 HORARIO=$(awk -F'=' '/FIN_ATARDECER/{print $2}' "$CONFIG_HORARIOS" | tr -d ' \r')
 HORA_ACTUAL=$(date +%H:%M)
+CIERRE_FORZADO=$(awk -F'=' '/^CIERRE_FORZADO=/{print $2}' "$CONFIG_GENERAL" | tr -d ' \r')
+VENTANA_ACTIVA=$(awk -F'=' '/^VENTANA_ACTIVA=/{print $2}' "$CONFIG_GENERAL" | tr -d ' \r')
 
-if [ "$HORA_ACTUAL" = "$HORARIO" ]; then
+# Ver el comentario equivalente en cierre_amanecer.sh.
+if [ "$HORA_ACTUAL" = "$HORARIO" ] || { [ "$CIERRE_FORZADO" = "TRUE" ] && [ "$VENTANA_ACTIVA" = "atardecer" ]; }; then
+
+	sed -i "s/^VENTANA_ACTIVA=.*/VENTANA_ACTIVA=NONE/" "$CONFIG_GENERAL"
+	sed -i "s/^CIERRE_FORZADO=.*/CIERRE_FORZADO=FALSE/" "$CONFIG_GENERAL"
 
 	sudo nmcli radio wifi on
 
