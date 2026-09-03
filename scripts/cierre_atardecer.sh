@@ -48,7 +48,7 @@ if [ "$HORA_ACTUAL" = "$HORARIO" ] || { [ "$CIERRE_FORZADO" = "TRUE" ] && [ "$VE
 
 		bash "$BASE_PATH/scripts/auto_sync_horarios.sh"
 
-		python3 "$BASE_PATH/python/set_wake_rtc.py" $HORA_WAKE
+		timeout 15 python3 "$BASE_PATH/python/set_wake_rtc.py" $HORA_WAKE
 		ALARMA_ARMADA=$?
 
 		sudo chown "$REAL_USER:$REAL_USER" "$USER_HOME/.config/rclone/rclone.conf"
@@ -65,7 +65,7 @@ if [ "$HORA_ACTUAL" = "$HORARIO" ] || { [ "$CIERRE_FORZADO" = "TRUE" ] && [ "$VE
 	sudo systemctl restart systemd-timesyncd
 	sleep 5
 
-	python3 "$BASE_PATH/python/sync_rtc.py"
+	timeout 10 python3 "$BASE_PATH/python/sync_rtc.py"
 
 	# Ver el comentario equivalente en cierre_amanecer.sh.
 	if systemctl list-unit-files birdnet_analysis.service &>/dev/null; then
@@ -108,7 +108,7 @@ if [ "$HORA_ACTUAL" = "$HORARIO" ] || { [ "$CIERRE_FORZADO" = "TRUE" ] && [ "$VE
 
 	sudo nmcli radio wifi off
 
-	python3 "$BASE_PATH/python/set_wake_rtc.py" $HORA_WAKE
+	timeout 15 python3 "$BASE_PATH/python/set_wake_rtc.py" $HORA_WAKE
 	ALARMA_ARMADA=$?
 
 	echo "Cierre atardecer completado a las $HORA_ACTUAL"

@@ -1,3 +1,14 @@
+# ATENCION -- este archivo tiene estado REAL de cada dispositivo (FIRST_START,
+# coordenadas, VENTANA_ACTIVA/CIERRE_FORZADO), no es una plantilla. Por eso
+# actualizar_repo.sh lo excluye a proposito de la sincronizacion automatica.
+# NUNCA copiar este archivo tal cual (scp/cp) de un dispositivo a otro ni del
+# repo a un dispositivo ya instalado -- pasó una vez (3/9/2026) que un scp sin
+# filtrar pisó un FIRST_START=FALSE real con el TRUE de esta copia, metiendo
+# al dispositivo en loop de modo hotspot. Si hay que agregar una clave nueva
+# (como UMBRAL_BATERIA_V/VENTANA_ACTIVA/CIERRE_FORZADO el 3/9), aplicarla con
+# sed apuntando a esa clave puntual en el dispositivo, no sobreescribiendo el
+# archivo entero.
+
 # Ruta de la carpeta en Google Drive donde se sincronizan datos y configuración
 # Puede ser una carpeta en la raíz (ej: LSD-Tector) o anidada (ej: Proyectos/LSD/Tector)
 DRIVE_PATH=Laboratorio 7/Tector 2

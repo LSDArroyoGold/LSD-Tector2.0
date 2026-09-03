@@ -23,8 +23,17 @@ fi
 
 UMBRAL=$(awk -F'=' '/^UMBRAL_BATERIA_V=/{print $2}' "$CONFIG_GENERAL" | tr -d ' \r')
 
-LECTURA=$(python3 "$BASE_PATH/python/leer_ina219.py" 2>&1)
-if [ $? -ne 0 ]; then
+# timeout defensivo: si el bus I2C se traba (paso una vez, el 3/9, y
+# encolgo el sistema entero hasta un power-cycle completo), esta lectura
+# no se tiene que quedar esperando para siempre -- se corta a los 10s, se
+# loguea, y el proximo chequeo de cron (5 min despues) lo vuelve a intentar
+# solo.
+LECTURA=$(timeout 10 python3 "$BASE_PATH/python/leer_ina219.py" 2>&1)
+CODIGO=$?
+if [ $CODIGO -eq 124 ]; then
+	python3 "$BASE_PATH/python/log_sistema.py" MSG "ALERTA: chequeo_bateria -- lectura del INA219 colgada, cortada a los 10s (posible bus I2C trabado)"
+	exit 1
+elif [ $CODIGO -ne 0 ]; then
 	python3 "$BASE_PATH/python/log_sistema.py" MSG "ALERTA: chequeo_bateria no pudo leer el INA219 -- $LECTURA"
 	exit 1
 fi
