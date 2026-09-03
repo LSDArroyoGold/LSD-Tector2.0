@@ -27,9 +27,10 @@ DRIVE_PATH=Laboratorio 7/Tector 2
 # propósito, no una sola cosa:
 #
 # 1) CORTE DE SEGURIDAD (lo único que bloquea/cierra ventana): se queda
-#    simple, umbral de voltaje puro, sin depender de ninguna curva ni
+#    simple, umbral de VOLTAJE puro, sin depender de ninguna curva ni
 #    calibración -- cuanta menos lógica tenga la parte de seguridad,
-#    mejor. Umbral ya definido:
+#    mejor, y es lo más robusto. Nunca dispara por porcentaje, ni antes
+#    ni después de tener la curva empírica. Umbral ya definido:
 #
 #      UMBRAL_BATERIA_V=6.9   # ~3.45V/celda, ~15% de capacidad restante
 #
@@ -67,6 +68,12 @@ DRIVE_PATH=Laboratorio 7/Tector 2
 #        llevarlo hasta el fondo.
 #      - Duración estimada: ~12-14hs, al consumo real medido (~470mA
 #        promedio) sobre los ~7000mAh nominales del pack 2S2P.
+#
+#    Una vez que exista la curva real: mirar a qué % corresponde
+#    aproximadamente el UMBRAL_BATERIA_V=6.9 actual (~15% según la regla
+#    vieja) y, si tiene sentido, ajustar el NÚMERO del umbral -- pero el
+#    mecanismo del watchdog sigue comparando contra voltios siempre, la
+#    curva nunca pasa a ser parte del disparo en sí.
 #
 # Cuando el INA219 esté instalado, activar algo del estilo (a definir
 # junto con la lógica del watchdog en chequeo_bateria.sh):
