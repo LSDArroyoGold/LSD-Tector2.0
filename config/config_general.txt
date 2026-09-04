@@ -35,6 +35,16 @@ DRIVE_PATH=LSD-Tector
 # cierran antes de tiempo si ven CIERRE_FORZADO=TRUE (además del cierre
 # normal por horario) y resetean los dos flags al terminar.
 #
+# CARACTERIZACION DUAL (agregado el 4/9/2026): cada corrida del watchdog
+# (python/registrar_bateria.py, en vez de leer_ina219.py directo) hace DOS
+# lecturas -- CON el MPPT conectado tal cual y SIN carga (aislada) -- y
+# loguea ambas a log_bateria.txt (CSV), que se sube a Drive al final de
+# cada corrida (best-effort, nunca bloquea la decision de seguridad, que
+# sigue basandose SOLO en la lectura SIN carga). Pensado para poder
+# reconstruir despues como se comporta el pack en los dos regimenes a lo
+# largo del tiempo -- seguridad y decision de corte sin cambios, esto es
+# puramente para analisis posterior.
+#
 # AISLADOR DE CARGA MPPT (agregado y validado el 3/9/2026, esquematico:
 # https://claude.ai/code/artifact/f9c178ff-7ef6-41eb-9c7a-5d018edceb9a) --
 # leer_ina219.py corta un instante la carga MPPT->BMS (GPIO17, PNP+MOSFET
