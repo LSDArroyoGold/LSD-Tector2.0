@@ -158,11 +158,11 @@ CIERRE_FORZADO=FALSE
 # mismo dia (4/9) a limite en TAMAÑO (el tamaño es el factor que
 # realmente puede llenar la SD). 806MB reales en 16 dias de uso en el
 # labo (~50MB/dia) -> 10240MB representaban ~6 meses a ese ritmo. Bajado
-# a 4096MB (4GB) el mismo dia para quedar parejo con el limite de Drive
-# (4GB, pedido explicito de Diego -- cuenta de Drive con limite propio)
-# -- 4GB local sigue siendo generoso (~2.4 meses a ese ritmo) contra
-# 43GB libres de una SD de 59GB.
-RETENCION_AUDIO_LOCAL_MB=4096
+# primero a 4096MB (parejo con Drive) y despues a 8192MB (8GB) a pedido
+# explicito de Diego -- local y Drive quedan con numeros DISTINTOS a
+# proposito: Drive tiene limite propio de cuenta (4GB), pero la SD local
+# (59GB, 43GB libres) tiene mas margen y no hace falta que coincidan.
+RETENCION_AUDIO_LOCAL_MB=8192
 RETENCION_DRIVE_MB=4096
 
 # -------------------------
