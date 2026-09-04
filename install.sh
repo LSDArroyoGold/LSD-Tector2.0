@@ -121,7 +121,14 @@ sudo chmod 755 /etc/NetworkManager/dispatcher.d/90-sync-rtc
 
 echo "    Dispatcher 90-sync-rtc instalado (sincroniza el RTC en cada conexion real)"
 
-# --- 7. Crontab del usuario ---
+# --- 7. Rotacion de logs (logrotate) ---
+echo "==> Instalando rotacion de logs"
+sudo cp "$BASE_PATH/config/logrotate-tector" /etc/logrotate.d/tector
+sudo chown root:root /etc/logrotate.d/tector
+sudo chmod 644 /etc/logrotate.d/tector
+echo "    /etc/logrotate.d/tector instalado (corre solo via el cron.daily estandar de logrotate)"
+
+# --- 8. Crontab del usuario ---
 echo "==> Configurando crontab para el usuario $REAL_USER"
 
 # Lineas del crontab, apuntando a las rutas reales del repo

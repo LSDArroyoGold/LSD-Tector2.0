@@ -12,6 +12,7 @@ export HOME="$USER_HOME"
 CONFIG_HORARIOS="$BASE_PATH/config/config_horarios.txt"
 CONFIG_GENERAL="$BASE_PATH/config/config_general.txt"
 DRIVE_PATH=$(awk -F'=' '/^DRIVE_PATH=/{print $2}' "$CONFIG_GENERAL" | tr -d '\r')
+RETENCION_DIAS=$(awk -F'=' '/^RETENCION_AUDIO_LOCAL_DIAS=/{print $2}' "$CONFIG_GENERAL" | tr -d ' \r')
 
 HORARIO=$(awk -F'=' '/FIN_AMANECER/{print $2}' "$CONFIG_HORARIOS" | tr -d ' \r')
 HORA_ACTUAL=$(date +%H:%M)
@@ -98,7 +99,14 @@ if [ "$HORA_ACTUAL" = "$HORARIO" ] || { [ "$CIERRE_FORZADO" = "TRUE" ] && [ "$VE
 	find "$USER_HOME/BirdSongs/Extracted/By_Date/" -name "*.png" -delete
 	rm -rf "$USER_HOME/BirdSongs/Extracted/Charts/"*
 
-	rclone copy "$USER_HOME/BirdSongs/Extracted/By_Date/" "gdrive:$DRIVE_PATH/Detecciones" --include "*.mp3"
+	if rclone copy "$USER_HOME/BirdSongs/Extracted/By_Date/" "gdrive:$DRIVE_PATH/Detecciones" --include "*.mp3" && [ -n "$RETENCION_DIAS" ]; then
+		# Solo se borra localmente si la subida de ESTA corrida salio bien --
+		# ver la nota completa en config/config_general.txt
+		# (RETENCION_AUDIO_LOCAL_DIAS). Drive nunca borra nada, esto acota
+		# solo el buffer local.
+		find "$USER_HOME/BirdSongs/Extracted/By_Date/" -name "*.mp3" -mtime "+$RETENCION_DIAS" -delete
+		find "$USER_HOME/BirdSongs/Extracted/By_Date/" -mindepth 2 -type d -empty -delete
+	fi
 
 	HORA_INICIO=$(awk -F'=' '/INICIO_AMANECER/{print $2}' "$CONFIG_HORARIOS" | tr -d ' \r' | tr -d ':')
 	HORA_FIN=$(awk -F'=' '/FIN_AMANECER/{print $2}' "$CONFIG_HORARIOS" | tr -d ' \r' | tr -d ':')

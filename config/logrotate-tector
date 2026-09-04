@@ -1,0 +1,43 @@
+# logrotate-tector - instalado por install.sh en /etc/logrotate.d/tector.
+# Agregado el 4/9/2026: ninguno de estos logs tenia rotacion -- crecen sin
+# limite mientras el dispositivo este vivo (motor.log ya pesaba 472KB
+# despues de una sola tarde de uso intenso en el labo). rclone los sube a
+# Drive como copia/mirror, nunca los mueve, asi que truncar la copia local
+# despues de rotar no pierde nada que no este ya respaldado.
+#
+# copytruncate (no el rename+reload por defecto de logrotate): estos
+# archivos los escriben procesos de larga duracion (motor.py via systemd,
+# cron cada 5 min) sin ningun mecanismo de "reabrir el archivo si cambia
+# de nombre" -- copytruncate copia el contenido y trunca el original en
+# el lugar, sin que el proceso que escribe se entere ni haga falta
+# reiniciarlo.
+#
+# log_bateria.txt es CSV con encabezado -- registrar_bateria.py solo
+# reescribe el encabezado si el archivo no existe. Arreglado el mismo dia
+# para que tambien lo reescriba si el archivo esta vacio (lo que deja
+# copytruncate atras), si no el encabezado se perderia para siempre en la
+# primera rotacion -- ver registrar_bateria.py.
+/home/lsd/LSD-Tector2.0/log_sistema.txt
+/home/lsd/LSD-Tector2.0/log_bateria.txt
+{
+	weekly
+	rotate 8
+	compress
+	missingok
+	notifempty
+	copytruncate
+}
+
+# motor.log es mucho mas verborragico que los otros dos (una linea por
+# disparo del detector, no solo por deteccion real) -- rotacion por
+# tamano ademas de tiempo, para acotar el peor caso en un dia
+# particularmente ruidoso en vez de esperar a la semana.
+/home/lsd/birdnet-lsd/motor.log
+{
+	size 10M
+	rotate 3
+	compress
+	missingok
+	notifempty
+	copytruncate
+}

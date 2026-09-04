@@ -31,7 +31,7 @@ fi
 # config/rclone.conf.ejemplo para la forma del archivo -- el real se pone a
 # mano en cada dispositivo (/home/lsd/.config/rclone/rclone.conf), nunca via
 # git/este script.
-ARCHIVOS="scripts/inicio_amanecer.sh scripts/inicio_atardecer.sh scripts/cierre_amanecer.sh scripts/cierre_atardecer.sh scripts/hotspot.sh scripts/auto_sync_horarios.sh scripts/generar_log_reciente.sh scripts/actualizar_repo.sh scripts/actualizar_modelo.sh scripts/aplicar_ajuste_regional.sh scripts/chequeo_bateria.sh python/calcular_horarios.py python/check_button.py python/log_sistema.py python/portal_configuracion.py python/set_wake_rtc.py python/sync_rtc.py python/cortar_alimentacion.py python/leer_ina219.py python/registrar_bateria.py systemd/hotspot.service systemd/sync-rtc.service systemd/90-sync-rtc systemd/cortar-alimentacion.service"
+ARCHIVOS="scripts/inicio_amanecer.sh scripts/inicio_atardecer.sh scripts/cierre_amanecer.sh scripts/cierre_atardecer.sh scripts/hotspot.sh scripts/auto_sync_horarios.sh scripts/generar_log_reciente.sh scripts/actualizar_repo.sh scripts/actualizar_modelo.sh scripts/aplicar_ajuste_regional.sh scripts/chequeo_bateria.sh python/calcular_horarios.py python/check_button.py python/log_sistema.py python/portal_configuracion.py python/set_wake_rtc.py python/sync_rtc.py python/cortar_alimentacion.py python/leer_ina219.py python/registrar_bateria.py systemd/hotspot.service systemd/sync-rtc.service systemd/90-sync-rtc systemd/cortar-alimentacion.service config/logrotate-tector"
 
 rm -rf "$TMP"
 mkdir -p "$TMP"
@@ -86,6 +86,15 @@ for ARCHIVO in $ARCHIVOS; do
 			mv "$TMP/$ARCHIVO" "$BASE_PATH/$ARCHIVO"
 			sudo cp "$BASE_PATH/$ARCHIVO" "/etc/systemd/system/$NOMBRE"
 			sudo chmod 644 "/etc/systemd/system/$NOMBRE"
+			;;
+		config/logrotate-tector)
+			# No es una unit de systemd -- va a /etc/logrotate.d/, corre solo
+			# via el cron.daily estandar de logrotate, no necesita reload ni
+			# enable de nada.
+			mv "$TMP/$ARCHIVO" "$BASE_PATH/$ARCHIVO"
+			sudo cp "$BASE_PATH/$ARCHIVO" /etc/logrotate.d/tector
+			sudo chown root:root /etc/logrotate.d/tector
+			sudo chmod 644 /etc/logrotate.d/tector
 			;;
 		*)
 			mv "$TMP/$ARCHIVO" "$BASE_PATH/$ARCHIVO"

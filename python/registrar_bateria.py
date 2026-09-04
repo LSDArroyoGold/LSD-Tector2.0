@@ -90,9 +90,14 @@ def main():
     throttled = leer_throttled()
     load_avg = leer_load_avg_1min()
 
-    existe = os.path.exists(ARCHIVO_LOG)
+    # os.path.getsize, no solo os.path.exists: logrotate (ver
+    # config/logrotate-tector) usa copytruncate, que deja el archivo
+    # existiendo pero vacio (0 bytes) despues de rotar -- sin este
+    # chequeo, el encabezado se perderia para siempre en la primera
+    # rotacion.
+    tiene_encabezado = os.path.exists(ARCHIVO_LOG) and os.path.getsize(ARCHIVO_LOG) > 0
     with open(ARCHIVO_LOG, "a") as f:
-        if not existe:
+        if not tiene_encabezado:
             f.write(
                 "timestamp,voltaje_con_carga_v,corriente_con_carga_ma,"
                 "voltaje_sin_carga_v,corriente_sin_carga_ma,"
