@@ -17,6 +17,14 @@
 # para que tambien lo reescriba si el archivo esta vacio (lo que deja
 # copytruncate atras), si no el encabezado se perderia para siempre en la
 # primera rotacion -- ver registrar_bateria.py.
+#
+# "su lsd lsd" en los dos bloques: sin esto, logrotate se niega a tocar
+# estos archivos ("parent directory has insecure permissions") porque
+# /home/lsd/LSD-Tector2.0 y /home/lsd/birdnet-lsd son del usuario lsd, no
+# de root -- confirmado el 4/9/2026 con "logrotate -d" ANTES de asumir que
+# esto ya andaba: sin el "su", el cron.daily de logrotate fallaria en
+# silencio todos los dias, exactamente la clase de problema que este
+# archivo existe para evitar.
 /home/lsd/LSD-Tector2.0/log_sistema.txt
 /home/lsd/LSD-Tector2.0/log_bateria.txt
 {
@@ -26,6 +34,7 @@
 	missingok
 	notifempty
 	copytruncate
+	su lsd lsd
 }
 
 # motor.log es mucho mas verborragico que los otros dos (una linea por
@@ -40,4 +49,5 @@
 	missingok
 	notifempty
 	copytruncate
+	su lsd lsd
 }
