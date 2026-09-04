@@ -56,6 +56,16 @@ DRIVE_PATH=LSD-Tector
 # corriendo suelto por su cuenta) queda retirado/superado por esto --
 # sacado del crontab, el archivo se deja en el repo solo de referencia.
 #
+# Agregado el 4/9/2026: cada corrida tambien loguea temp_cpu_c
+# (/sys/class/thermal), throttled (vcgencmd get_throttled -- mismo
+# bitmask usado a mano durante el debugging de undervoltage de este
+# proyecto, 0x0 = limpio) y load_avg_1min (os.getloadavg()) -- lecturas
+# casi gratis al lado de las dos del INA219, pensadas para cruzar despues
+# contra voltaje/corriente (ej. temperatura alta por uso real vs. por
+# ambiente, o un evento de throttled coincidiendo con bateria baja). Filas
+# de log_bateria.txt anteriores a esta fecha tienen menos columnas (CSV
+# desparejo a proposito, no se reescribe el historico).
+#
 # AISLADOR DE CARGA MPPT (agregado y validado el 3/9/2026, esquematico:
 # https://claude.ai/code/artifact/f9c178ff-7ef6-41eb-9c7a-5d018edceb9a) --
 # leer_ina219.py corta un instante la carga MPPT->BMS (GPIO17, PNP+MOSFET
