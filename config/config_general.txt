@@ -28,22 +28,33 @@ DRIVE_PATH=LSD-Tector
 # -- ambos valores con sentido físico (2S2P Samsung INR18650-35E, ~3.8V/celda).
 #
 # SOFTWARE: watchdog reactivo tipo v1.1 -- scripts/chequeo_bateria.sh corre
-# cada 5 min por cron, lee el INA219 (python/leer_ina219.py) solo si hay
-# una ventana activa, y si el voltaje cae por debajo de UMBRAL_BATERIA_V
-# marca CIERRE_FORZADO=TRUE. inicio_amanecer/atardecer.sh ponen
-# VENTANA_ACTIVA al arrancar la ventana; cierre_amanecer/atardecer.sh
-# cierran antes de tiempo si ven CIERRE_FORZADO=TRUE (además del cierre
-# normal por horario) y resetean los dos flags al terminar.
+# cada 5 min por cron, SIEMPRE (no solo en ventana, ver nota de
+# "CARACTERIZACION DUAL" mas abajo -- unificado el 4/9). Lee el INA219
+# (python/registrar_bateria.py) en cada corrida; si ADEMÁS hay una
+# ventana activa y el voltaje cae por debajo de UMBRAL_BATERIA_V, marca
+# CIERRE_FORZADO=TRUE (fuera de ventana no hay nada que forzar a cerrar).
+# inicio_amanecer/atardecer.sh ponen VENTANA_ACTIVA al arrancar la
+# ventana; cierre_amanecer/atardecer.sh cierran antes de tiempo si ven
+# CIERRE_FORZADO=TRUE (además del cierre normal por horario) y resetean
+# los dos flags al terminar.
 #
-# CARACTERIZACION DUAL (agregado el 4/9/2026): cada corrida del watchdog
-# (python/registrar_bateria.py, en vez de leer_ina219.py directo) hace DOS
-# lecturas -- CON el MPPT conectado tal cual y SIN carga (aislada) -- y
-# loguea ambas a log_bateria.txt (CSV), que se sube a Drive al final de
-# cada corrida (best-effort, nunca bloquea la decision de seguridad, que
-# sigue basandose SOLO en la lectura SIN carga). Pensado para poder
-# reconstruir despues como se comporta el pack en los dos regimenes a lo
-# largo del tiempo -- seguridad y decision de corte sin cambios, esto es
-# puramente para analisis posterior.
+# CARACTERIZACION DUAL (agregado el 4/9/2026, unificado el mismo dia):
+# cada corrida del watchdog (python/registrar_bateria.py, en vez de
+# leer_ina219.py directo) hace DOS lecturas -- CON el MPPT conectado tal
+# cual y SIN carga (aislada) -- y loguea ambas a log_bateria.txt (CSV),
+# que se sube a Drive al final de cada corrida (best-effort, nunca
+# bloquea la decision de seguridad, que sigue basandose SOLO en la
+# lectura SIN carga). Pensado para poder reconstruir despues como se
+# comporta el pack en los dos regimenes a lo largo del tiempo --
+# seguridad y decision de corte sin cambios, esto es puramente para
+# analisis posterior.
+#
+# Unificado con el chequeo de seguridad en el mismo chequeo_bateria.sh
+# (que ahora corre siempre, no solo en ventana -- ver mas arriba) para no
+# tener dos mecanismos separados haciendo cosas parecidas.
+# python/log_curva_carga.py (el logger exploratorio del rato anterior,
+# corriendo suelto por su cuenta) queda retirado/superado por esto --
+# sacado del crontab, el archivo se deja en el repo solo de referencia.
 #
 # AISLADOR DE CARGA MPPT (agregado y validado el 3/9/2026, esquematico:
 # https://claude.ai/code/artifact/f9c178ff-7ef6-41eb-9c7a-5d018edceb9a) --

@@ -1,8 +1,16 @@
 #!/usr/bin/env python3
-# log_curva_carga.py - registra voltaje/corriente del pack cada vez que se
-# lo llama, para reconstruir la curva de carga real mientras el MPPT esta
-# cargando de verdad. EXPLORATORIO/TEMPORAL -- no es parte de la
-# instalacion permanente (no esta en install.sh ni en actualizar_repo.sh a
+# log_curva_carga.py - RETIRADO/SUPERADO el 4/9/2026, mismo dia que se
+# agrego: chequeo_bateria.sh + registrar_bateria.py hacen ahora lo mismo
+# (y mas: lectura dual con/sin carga, no solo sin carga) de forma
+# permanente y unificada, sin necesitar este script aparte -- ver
+# config/config_general.txt. Sacado del crontab, se deja el archivo en el
+# repo solo de referencia historica, no volver a agregarlo al cron.
+#
+# --- descripcion original, ya no aplica tal cual ---
+# registra voltaje/corriente del pack cada vez que se lo llama, para
+# reconstruir la curva de carga real mientras el MPPT esta cargando de
+# verdad. EXPLORATORIO/TEMPORAL -- no es parte de la instalacion
+# permanente (no esta en install.sh ni en actualizar_repo.sh a
 # proposito), se agrega y se saca del crontab a mano cuando hace falta.
 # Pensado para correr cada 5 min por cron:
 #   */5 * * * * python3 /home/lsd/LSD-Tector2.0/python/log_curva_carga.py
