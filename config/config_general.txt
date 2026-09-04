@@ -144,19 +144,26 @@ CIERRE_FORZADO=FALSE
 
 # -------------------------
 
-# Retencion de audio local (agregado el 4/9/2026, subido a 60 el mismo
-# dia a pedido de Diego para tener mas margen). cierre_amanecer.sh/
-# cierre_atardecer.sh suben los mp3 a Drive con "rclone copy" -- NUNCA
-# borran el original local, asi que sin esto crecen sin limite mientras
-# el dispositivo este vivo. Medido en tector2 el 4/9: 806MB en 16 dias
-# de uso, todo bajo condiciones de labo ruidoso (el peor caso realista,
-# bastante mas disparos que en campo) -- 60 dias a ese ritmo son ~3GB,
-# contra 43GB libres de una SD de 59GB. Se borran los mp3 locales de mas
-# de N dias SOLO si el "rclone copy" de esa misma corrida salio bien --
-# si Drive no esta disponible en ese momento, no se borra nada, se
-# reintenta en el proximo cierre de ventana. Drive queda como archivo
-# permanente igual, esto solo acota el buffer local.
-RETENCION_AUDIO_LOCAL_DIAS=60
+# Retencion de audio local (agregado el 4/9/2026 con limite en DIAS,
+# rediseñado el mismo dia a pedido de Diego con limite en TAMAÑO en su
+# lugar -- el tamaño es el factor que realmente puede llenar la SD, un
+# numero de dias fijo es solo una traduccion aproximada de eso, no la
+# proteccion real). cierre_amanecer.sh/cierre_atardecer.sh suben los mp3
+# a Drive con "rclone copy" -- NUNCA borran el original local, asi que
+# sin esto crecen sin limite mientras el dispositivo este vivo. Cuando
+# el total supera RETENCION_AUDIO_LOCAL_MB, se borran los archivos MAS
+# VIEJOS (por fecha de modificacion) hasta volver a estar debajo del
+# limite -- un solo pase (ordenar por fecha, acumular tamaño, borrar lo
+# que sobre), no una cantidad fija de dias. Traduccion a tiempo, para
+# tener una referencia concreta (calculada el 4/9, con el filtro de
+# no-aves ya puesto y la limpieza ya hecha): 806MB reales en 16 dias de
+# uso en el labo (~50MB/dia) -> 10240MB (10GB) representan
+# aproximadamente 6 meses a ese ritmo, contra 43GB libres de una SD de
+# 59GB -- de sobra. Se borra SOLO si el "rclone copy" de esa misma
+# corrida salio bien -- si Drive no esta disponible en ese momento, no
+# se borra nada, se reintenta en el proximo cierre de ventana. Drive
+# queda como archivo permanente igual, esto solo acota el buffer local.
+RETENCION_AUDIO_LOCAL_MB=10240
 
 # -------------------------
 

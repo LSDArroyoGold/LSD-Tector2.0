@@ -1,9 +1,11 @@
 # logrotate-tector - instalado por install.sh en /etc/logrotate.d/tector.
-# Agregado el 4/9/2026: ninguno de estos logs tenia rotacion -- crecen sin
-# limite mientras el dispositivo este vivo (motor.log ya pesaba 472KB
-# despues de una sola tarde de uso intenso en el labo). rclone los sube a
-# Drive como copia/mirror, nunca los mueve, asi que truncar la copia local
-# despues de rotar no pierde nada que no este ya respaldado.
+# Agregado el 4/9/2026, rediseñado el mismo dia a pedido de Diego: el
+# limite real es el TAMAÑO en disco (eso es lo que efectivamente puede
+# llenar la SD), no una antiguedad fija en dias -- "rotate 0" (sin
+# generaciones viejas guardadas, sin compress) trunca directo al tope en
+# vez de ir acumulando copias .gz, mas simple y mas practico. Los tamanos
+# de abajo estan elegidos para que, en funcionamiento NORMAL, el limite
+# represente aproximadamente 1 año -- ver el calculo real de cada uno.
 #
 # copytruncate (no el rename+reload por defecto de logrotate): estos
 # archivos los escriben procesos de larga duracion (motor.py via systemd,
@@ -12,40 +14,50 @@
 # el lugar, sin que el proceso que escribe se entere ni haga falta
 # reiniciarlo.
 #
-# log_bateria.txt es CSV con encabezado -- registrar_bateria.py solo
-# reescribe el encabezado si el archivo no existe. Arreglado el mismo dia
-# para que tambien lo reescriba si el archivo esta vacio (lo que deja
-# copytruncate atras), si no el encabezado se perderia para siempre en la
-# primera rotacion -- ver registrar_bateria.py.
-#
-# "su lsd lsd" en los dos bloques: sin esto, logrotate se niega a tocar
-# estos archivos ("parent directory has insecure permissions") porque
-# /home/lsd/LSD-Tector2.0 y /home/lsd/birdnet-lsd son del usuario lsd, no
-# de root -- confirmado el 4/9/2026 con "logrotate -d" ANTES de asumir que
-# esto ya andaba: sin el "su", el cron.daily de logrotate fallaria en
-# silencio todos los dias, exactamente la clase de problema que este
-# archivo existe para evitar.
-/home/lsd/LSD-Tector2.0/log_sistema.txt
+# "su lsd lsd": sin esto logrotate se niega a tocar estos archivos
+# ("insecure permissions", /home/lsd/... no es de root) -- confirmado a
+# mano con "logrotate -d" antes de darlo por andando.
+
+# Cadencia fija (chequeo_bateria.sh cada 5 min = 288 filas/dia), no
+# depende del ambiente. Medido el 4/9/2026: ~58 bytes/fila reales ->
+# ~16.4KB/dia -> ~5.8MB/año. 8M da ~1.4 años de margen.
 /home/lsd/LSD-Tector2.0/log_bateria.txt
 {
-	weekly
-	rotate 8
-	compress
+	size 8M
+	rotate 0
 	missingok
 	notifempty
 	copytruncate
 	su lsd lsd
 }
 
-# motor.log es mucho mas verborragico que los otros dos (una linea por
-# disparo del detector, no solo por deteccion real) -- rotacion por
-# tamano ademas de tiempo, para acotar el peor caso en un dia
-# particularmente ruidoso en vez de esperar a la semana.
+# Tambien de cadencia mayormente fija (2 ventanas/dia + alertas
+# ocasionales). Medido el 4/9/2026: ~308 bytes/dia reales (15 dias) ->
+# ~112KB/año -- pero motor.py/actualizar_birdnet_lsd.sh ganaron alertas
+# nuevas el mismo dia (BirdWeather, Drive, chequeos de salud) que todavia
+# no estan reflejadas en esa medicion. 512K da margen amplio para eso.
+/home/lsd/LSD-Tector2.0/log_sistema.txt
+{
+	size 512k
+	rotate 0
+	missingok
+	notifempty
+	copytruncate
+	su lsd lsd
+}
+
+# Este SI depende del ambiente (una linea por cada disparo del detector,
+# no solo por deteccion real) -- el 4/9/2026 el labo estaba
+# excepcionalmente ruidoso (gente hablando + mis propias pruebas):
+# 495KB en 5h17m medidos en vivo, ~2.2MB/dia extrapolado, ~800MB/año en
+# ese peor caso. 1G cubre eso con margen incluso si un dia de campo real
+# fuera tan ruidoso como ese -- en la practica, con actividad real de
+# aves en vez de ruido humano continuo, deberia durar bastante mas que
+# un año.
 /home/lsd/birdnet-lsd/motor.log
 {
-	size 10M
-	rotate 3
-	compress
+	size 1G
+	rotate 0
 	missingok
 	notifempty
 	copytruncate

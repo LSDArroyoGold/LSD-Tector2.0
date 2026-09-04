@@ -12,7 +12,7 @@ export HOME="$USER_HOME"
 CONFIG_HORARIOS="$BASE_PATH/config/config_horarios.txt"
 CONFIG_GENERAL="$BASE_PATH/config/config_general.txt"
 DRIVE_PATH=$(awk -F'=' '/^DRIVE_PATH=/{print $2}' "$CONFIG_GENERAL" | tr -d '\r')
-RETENCION_DIAS=$(awk -F'=' '/^RETENCION_AUDIO_LOCAL_DIAS=/{print $2}' "$CONFIG_GENERAL" | tr -d ' \r')
+RETENCION_MB=$(awk -F'=' '/^RETENCION_AUDIO_LOCAL_MB=/{print $2}' "$CONFIG_GENERAL" | tr -d ' \r')
 
 HORARIO=$(awk -F'=' '/FIN_AMANECER/{print $2}' "$CONFIG_HORARIOS" | tr -d ' \r')
 HORA_ACTUAL=$(date +%H:%M)
@@ -99,12 +99,18 @@ if [ "$HORA_ACTUAL" = "$HORARIO" ] || { [ "$CIERRE_FORZADO" = "TRUE" ] && [ "$VE
 	find "$USER_HOME/BirdSongs/Extracted/By_Date/" -name "*.png" -delete
 	rm -rf "$USER_HOME/BirdSongs/Extracted/Charts/"*
 
-	if rclone copy "$USER_HOME/BirdSongs/Extracted/By_Date/" "gdrive:$DRIVE_PATH/Detecciones" --include "*.mp3" && [ -n "$RETENCION_DIAS" ]; then
+	if rclone copy "$USER_HOME/BirdSongs/Extracted/By_Date/" "gdrive:$DRIVE_PATH/Detecciones" --include "*.mp3" && [ -n "$RETENCION_MB" ]; then
 		# Solo se borra localmente si la subida de ESTA corrida salio bien --
 		# ver la nota completa en config/config_general.txt
-		# (RETENCION_AUDIO_LOCAL_DIAS). Drive nunca borra nada, esto acota
-		# solo el buffer local.
-		find "$USER_HOME/BirdSongs/Extracted/By_Date/" -name "*.mp3" -mtime "+$RETENCION_DIAS" -delete
+		# (RETENCION_AUDIO_LOCAL_MB). Drive nunca borra nada, esto acota
+		# solo el buffer local. Un solo pase: ordena por fecha de
+		# modificacion (mas nuevo primero), acumula tamaño, y borra todo lo
+		# que quede una vez superado el limite -- el limite real es el
+		# tamaño en disco, no una cantidad de dias fija.
+		find "$USER_HOME/BirdSongs/Extracted/By_Date/" -name "*.mp3" -printf '%T@ %s %p\n' \
+			| sort -rn \
+			| awk -v cap="$((RETENCION_MB * 1024 * 1024))" '{ acumulado += $2; if (acumulado > cap) print $3 }' \
+			| while IFS= read -r ARCHIVO; do rm -f "$ARCHIVO"; done
 		find "$USER_HOME/BirdSongs/Extracted/By_Date/" -mindepth 2 -type d -empty -delete
 	fi
 
