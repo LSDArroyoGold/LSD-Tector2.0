@@ -5,16 +5,28 @@
 # 3/9/2026 en tector2. Esto de aca es mas simple igual: el protocolo del
 # INA219 son 4 registros de 16 bits, no hace falta una libreria para eso.
 #
-# PENDIENTE: esto es el driver de lectura, verificado funcionando en banco
-# (7.596V / 478mA con la Pi corriendo birdnet-lsd normalmente, valores con
-# sentido fisico para el pack 2S2P Samsung INR18650-35E). Todavia NO esta
-# integrado a ningun watchdog ni cron -- ver la nota completa en
-# config/config_general.txt (seccion INA219) para el diseño acordado
-# (corte de seguridad por umbral simple + % estimado compensado por IR
-# con curva propia via calibracion) antes de escribir ese watchdog.
+# Antes de cada lectura, corta un instante la carga MPPT->BMS a traves del
+# aislador de carga (74HC-- no, en este caso es un PNP+MOSFET, ver
+# esquematico "Aislador de Carga MPPT") pulsando GPIO17 -- asi la lectura
+# de tension queda SIEMPRE en regimen de descarga pura (consumo real del
+# sistema, sin aporte del panel), sin importar si en ese instante hay sol
+# entrando o no. Es el mismo regimen en el que se va a calibrar la curva de
+# % (pendiente, ver config/config_general.txt) -- sin esto, una lectura
+# tomada mientras carga daria una tension inflada por sobre la real, y el
+# umbral de corte de bateria (que compara contra esta misma lectura) podria
+# leer "todo bien" con el pack en un estado real mucho peor.
+#
+# El default seguro de ese aislador (nadie manejando GPIO17) es "carga
+# conectada" -- lo sostienen R1/R2 solas, sin ayuda de la Pi (ver la nota
+# en config_general.txt sobre por que el default de este circuito no puede
+# depender de que la Pi este prendida). El pulso de corte de aca es la
+# UNICA intervencion activa, dura menos de un segundo y medio, y se libera
+# siempre pase lo que pase (try/finally) -- nunca se deja la carga cortada
+# si algo de la lectura falla.
 
 import smbus2
 import time
+import RPi.GPIO as GPIO
 
 ADDR = 0x40  # direccion I2C default del INA219 (el DS3231 esta en 0x68,
              # mismo bus 1, sin conflicto)
@@ -31,35 +43,74 @@ CURRENT_LSB_MA = 0.1  # mA por cuenta, con la calibracion de arriba
 # 12 bits, conversion continua de bus+shunt. Valor estandar del datasheet.
 CONFIG_VALUE = 0x399F
 
+PIN_AISLADOR = 17  # BCM -- base de Q1 del aislador de carga MPPT, ver
+                   # esquematico. GPIO en 0V = corta la carga; suelto/alto
+                   # (default) = carga conectada.
+ASENTAMIENTO_S = 1.0  # espera despues de cortar, antes de leer -- tiempo
+                       # de asentamiento del transitorio propio de la
+                       # bateria al cambiar de regimen (carga->descarga
+                       # pura), no es instantaneo.
 
-def leer(bus_num=BUS_NUM, addr=ADDR):
-    """Devuelve (voltaje_V, corriente_mA). Configura y calibra en cada
-    llamada -- son 2 escrituras I2C, no vale la pena optimizar dado que
-    esto se va a llamar cada varios minutos, no en un loop ajustado."""
-    bus = smbus2.SMBus(bus_num)
+
+def _cortar_carga():
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setwarnings(False)
+    GPIO.setup(PIN_AISLADOR, GPIO.OUT, initial=GPIO.HIGH)
+    GPIO.output(PIN_AISLADOR, GPIO.LOW)
+
+
+def _restablecer_carga():
+    # Se libera a entrada (alta impedancia), no se deja manejado en alto --
+    # el default seguro de este circuito (carga conectada) lo sostienen
+    # R1/R2 del lado del hardware solas. A proposito NO se imita el patron
+    # de cortar_alimentacion.py (que si deja el pin manejado activamente en
+    # todo momento) -- ese circuito y este tienen defaults de seguridad
+    # opuestos por diseño (uno depende de la Pi, el otro no puede depender
+    # de ella), ver la nota en config_general.txt.
+    GPIO.setup(PIN_AISLADOR, GPIO.IN)
+
+
+def leer(bus_num=BUS_NUM, addr=ADDR, aislar_carga=True):
+    """Devuelve (voltaje_V, corriente_mA). Por defecto corta la carga MPPT
+    un instante antes de medir (ver notas de arriba) para que la lectura
+    sea siempre en descarga pura. Pasar aislar_carga=False para leer tal
+    cual, sin tocar el GPIO del aislador (por ejemplo, para diagnostico del
+    propio circuito de corte, o si el aislador todavia no esta instalado)."""
+    if aislar_carga:
+        _cortar_carga()
+        time.sleep(ASENTAMIENTO_S)
+
     try:
-        bus.write_i2c_block_data(addr, 0x00, [CONFIG_VALUE >> 8, CONFIG_VALUE & 0xFF])
-        bus.write_i2c_block_data(addr, 0x05, [(CAL >> 8) & 0xFF, CAL & 0xFF])
-        time.sleep(0.05)  # tiempo de conversion del ADC
+        bus = smbus2.SMBus(bus_num)
+        try:
+            bus.write_i2c_block_data(addr, 0x00, [CONFIG_VALUE >> 8, CONFIG_VALUE & 0xFF])
+            bus.write_i2c_block_data(addr, 0x05, [(CAL >> 8) & 0xFF, CAL & 0xFF])
+            time.sleep(0.05)  # tiempo de conversion del ADC
 
-        raw_v = bus.read_i2c_block_data(addr, 0x02, 2)
-        v_val = (raw_v[0] << 8) | raw_v[1]
-        if v_val & 0x1:
-            raise RuntimeError("INA219: overflow en la medicion de bus voltage")
-        voltaje_v = ((v_val >> 3) * 4) / 1000
+            raw_v = bus.read_i2c_block_data(addr, 0x02, 2)
+            v_val = (raw_v[0] << 8) | raw_v[1]
+            if v_val & 0x1:
+                raise RuntimeError("INA219: overflow en la medicion de bus voltage")
+            voltaje_v = ((v_val >> 3) * 4) / 1000
 
-        raw_i = bus.read_i2c_block_data(addr, 0x04, 2)
-        i_val = (raw_i[0] << 8) | raw_i[1]
-        if i_val > 32767:
-            i_val -= 65536
-        corriente_ma = i_val * CURRENT_LSB_MA
+            raw_i = bus.read_i2c_block_data(addr, 0x04, 2)
+            i_val = (raw_i[0] << 8) | raw_i[1]
+            if i_val > 32767:
+                i_val -= 65536
+            corriente_ma = i_val * CURRENT_LSB_MA
 
-        return voltaje_v, corriente_ma
+            return voltaje_v, corriente_ma
+        finally:
+            bus.close()
     finally:
-        bus.close()
+        if aislar_carga:
+            _restablecer_carga()
 
 
 if __name__ == "__main__":
-    v, i = leer()
-    print(f"Voltaje (pack): {v:.3f} V")
+    import sys
+
+    aislar = "--sin-aislar" not in sys.argv
+    v, i = leer(aislar_carga=aislar)
+    print(f"Voltaje (pack): {v:.3f} V" + ("" if aislar else " (SIN aislar carga)"))
     print(f"Corriente: {i:.1f} mA")

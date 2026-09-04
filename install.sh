@@ -72,8 +72,8 @@ fi
 echo "==> Dependencias de Python (astral, smbus2)"
 pip install astral smbus2 --break-system-packages --quiet
 # smbus2 es para el DS3231 (lectura directa de registros, ver
-# python/set_wake_rtc.py) y el INA219 (ver python/leer_ina219.py, PENDIENTE
-# de integrar a un watchdog -- ver config/config_general.txt).
+# python/set_wake_rtc.py) y el INA219 (ver python/leer_ina219.py, usado por
+# el watchdog de bateria -- ver config/config_general.txt).
 
 # --- 5. Permisos de ejecucion a los scripts ---
 echo "==> Dando permisos de ejecucion a los scripts .sh"

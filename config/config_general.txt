@@ -35,6 +35,21 @@ DRIVE_PATH=LSD-Tector
 # cierran antes de tiempo si ven CIERRE_FORZADO=TRUE (además del cierre
 # normal por horario) y resetean los dos flags al terminar.
 #
+# AISLADOR DE CARGA MPPT (agregado y validado el 3/9/2026, esquematico:
+# https://claude.ai/code/artifact/f9c178ff-7ef6-41eb-9c7a-5d018edceb9a) --
+# leer_ina219.py corta un instante la carga MPPT->BMS (GPIO17, PNP+MOSFET
+# dedicados, no el switch principal de alimentacion) antes de cada
+# lectura, para que SIEMPRE quede en descarga pura, sin importar si hay
+# sol entrando en ese momento. Confirmado con datos reales el mismo dia:
+# 7.012V aislado vs 8.476V sin aislar, con el MPPT cargando -- 1.46V de
+# diferencia, la lectura cruda hubiera sido groseramente optimista. El
+# default seguro de ese circuito (sin nadie manejando GPIO17) es "carga
+# conectada", sostenido solo por hardware -- ver el propio leer_ina219.py
+# para el detalle de por que el default no puede depender de la Pi acá
+# tampoco (mismo principio que el corte de alimentacion, pero aplicado a
+# un circuito distinto). Ventana de corte real: ~1.2s cada 5 min, sin
+# impacto medible en la carga a largo plazo.
+#
 # DISEÑO ACORDADO (3/9, sesión con Diego) -- dos partes separadas a
 # propósito, no una sola cosa:
 #
@@ -56,7 +71,12 @@ DRIVE_PATH=LSD-Tector
 #    tensión bajo carga no es la tensión a circuito abierto (OCV) --
 #    compensar con la corriente medida en la misma lectura:
 #      V_ocv_estimado ≈ V_medido + I_medido × R_interna_del_pack
-#    y despues mapear ese V_ocv a % con una curva. Arrancar con la curva
+#    Con el aislador de carga MPPT ya en juego, esta compensación queda
+#    más simple que lo pensado originalmente: la corriente medida es
+#    siempre de descarga (nunca de carga, porque el MPPT está aislado en
+#    el instante de la lectura), así que no hace falta manejar los dos
+#    sentidos -- solo la caída IR del propio consumo de la Pi.
+#    Despues mapear ese V_ocv a % con una curva. Arrancar con la curva
 #    del datasheet Samsung INR18650-35E (nominal 3.60V, carga 4.2V, corte
 #    fábrica 2.65V, 3350-3500mAh a 0.2C) como aproximación inicial -- pero
 #    esa curva es de UNA celda a 0.2C (680mA) en laboratorio, no del pack
